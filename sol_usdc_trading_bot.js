@@ -186,14 +186,28 @@ export class JupiterMonitor {
           }
         }
 
-        const marketData = await this.fetchMarketData();
+        let marketData;
+        try {
+          marketData = await this.fetchMarketData();
+        } catch (e) {
+          logger.warn(`[${new Date().toLocaleTimeString()}] Market data temporarily unavailable (Binance). Retrying in ${POLL_INTERVAL/1000}s...`);
+          await delay(POLL_INTERVAL);
+          continue;
+        }
+
         const { latestRsi, latestMacd, latestVwap } = this.calculateIndicators(marketData);
 
-        const tradeAmountStr = tradeAmount.toString();
-        const priceQuote = await this.getQuote(startToken, targetToken, tradeAmountStr);
+        let priceQuote, solPriceQuote;
+        try {
+          priceQuote = await this.getQuote(startToken, targetToken, tradeAmount.toString());
+          solPriceQuote = await this.getQuote('SOL', 'USDC', '1');
+        } catch (e) {
+          logger.warn(`[${new Date().toLocaleTimeString()}] Trading quotes temporarily unavailable (Jupiter). Retrying in ${POLL_INTERVAL/1000}s...`);
+          await delay(POLL_INTERVAL);
+          continue;
+        }
+
         const receiveAmount = parseInt(priceQuote.outAmount) / (10 ** TOKENS[targetToken].decimals);
-        
-        const solPriceQuote = await this.getQuote('SOL', 'USDC', '1');
         const livePrice = parseInt(solPriceQuote.outAmount) / (10 ** TOKENS.USDC.decimals);
 
         let currentPnl = 0;
@@ -207,7 +221,14 @@ export class JupiterMonitor {
           totalUsdc = currentAmount * livePrice;
         } else {
           // startToken is USDC, which means we have reservedSol stored safely from the original swap
-          const reverseQuote = await this.getQuote('USDC', 'SOL', currentAmount.toString());
+          let reverseQuote;
+          try {
+            reverseQuote = await this.getQuote('USDC', 'SOL', currentAmount.toString());
+          } catch (e) {
+            logger.warn(`[${new Date().toLocaleTimeString()}] Price fetch failed. Retrying...`);
+            await delay(POLL_INTERVAL);
+            continue;
+          }
           const usdcToSol = parseInt(reverseQuote.outAmount) / (10 ** TOKENS.SOL.decimals);
           totalSol = usdcToSol + reservedSol;
           totalUsdc = currentAmount + (reservedSol * livePrice);
@@ -288,7 +309,7 @@ export class JupiterMonitor {
           if (startToken === 'SOL') {
             logger.info(`Assuming you successfully swapped ${tradeAmount.toFixed(4)} SOL (Leaving ${SOL_RESERVE} SOL for fees) for ${receiveAmount.toFixed(4)} USDC.`);
             currentAmount = receiveAmount;
-            reservedSol += SOL_RESERVE;
+            reservedSol = SOL_RESERVE;
           } else {
             logger.info(`Assuming you successfully swapped ${currentAmount.toFixed(4)} USDC for ${receiveAmount.toFixed(4)} SOL.`);
             currentAmount = receiveAmount + reservedSol;
