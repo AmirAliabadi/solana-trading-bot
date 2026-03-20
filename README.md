@@ -13,6 +13,29 @@ Currently, the bot is operating as a **Virtual Simulation**. It accurately queri
 
 ---
 
+## 📈 Technical Analysis Strategy
+
+The bot utilizes a strict, multi-layered filter of three institutional-grade indicators to execute exact Mean-Reversion trades:
+
+1. **RSI (Relative Strength Index) - The Trigger**
+   - **Buy Signal:** RSI drops below `30` (Heavily Oversold).
+   - **Sell Signal:** RSI rallies above `70` (Heavily Overbought).
+   - *Purpose:* Identifies extreme rubber-band deviations in price that are mathematically primed for an immediate, violent bounce.
+
+2. **MACD (Moving Average Convergence Divergence) - The Momentum Filter**
+   - **Buy Signal:** MACD Histogram flips Positive (`> 0`).
+   - **Sell Signal:** MACD Histogram flips Negative (`< 0`).
+   - *Purpose:* Prevents buying while an asset is still actively crashing. It forces the bot to wait until the exact moment the immediate downward momentum starts curving upwards.
+
+3. **VWAP (Volume Weighted Average Price) - The Macro Filter**
+   - **Buy Signal:** Live Price breaks *Above* the VWAP.
+   - **Sell Signal:** Live Price breaks *Below* the VWAP.
+   - *Purpose:* Acts as the ultimate safety net. It analyzes true market volume to guarantee you are trading in the direction of institutional money, preventing fake-outs.
+
+*Note: The bot requires ALL THREE conditions to align simultaneously before it will trigger an alarm and flip its active portfolio state.*
+
+---
+
 ## 🚀 How to Run in a Clean Environment
 
 ### 1. Prerequisites
