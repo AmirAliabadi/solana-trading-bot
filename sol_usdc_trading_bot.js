@@ -224,21 +224,58 @@ export class JupiterMonitor {
         const pnlStr = currentPnl >= 0 ? `+${currentPnl.toFixed(4)}` : `${currentPnl.toFixed(4)}`;
         const pnlPercStr = pnlPercentage >= 0 ? `+${pnlPercentage.toFixed(2)}%` : `${pnlPercentage.toFixed(2)}%`;
 
-        logger.info(`[${new Date().toLocaleTimeString()}] PNL: ${pnlStr} ${initialAsset} (${pnlPercStr}) | Holding: ${currentAmount.toFixed(4)} ${startToken} | Val: ~${receiveAmount.toFixed(4)} ${targetToken} | Price: $${livePrice.toFixed(2)} | VWAP: $${latestVwap.toFixed(2)} | RSI: ${latestRsi.toFixed(1)} | MACD: ${latestMacd.histogram?.toFixed(3) || 0}`);
-
         let signalTriggered = false;
+        let signalType = '';
+        let rsiMet = false;
+        let macdMet = false;
+        let vwapMet = false;
 
         if (startToken === 'SOL') {
-          if (latestRsi > 70 && latestMacd.histogram < 0 && livePrice < latestVwap) {
-            logger.info(`\n🚨 SELL RECOMMENDATION ALARM 🚨`);
-            logger.info(`SOL is OVERBOUGHT (RSI: ${latestRsi.toFixed(2)}), MACD crossed down, AND Price ($${livePrice.toFixed(2)}) is confirmed below VWAP ($${latestVwap.toFixed(2)})!`);
+          rsiMet = latestRsi > 70;
+          macdMet = latestMacd.histogram < 0;
+          vwapMet = livePrice < latestVwap;
+          
+          if (rsiMet && macdMet && vwapMet) {
             signalTriggered = true;
+            signalType = 'SELL';
           }
         } else if (startToken === 'USDC') {
-          if (latestRsi < 30 && latestMacd.histogram > 0 && livePrice > latestVwap) {
+          rsiMet = latestRsi < 30;
+          macdMet = latestMacd.histogram > 0;
+          vwapMet = livePrice > latestVwap;
+          
+          if (rsiMet && macdMet && vwapMet) {
+            signalTriggered = true;
+            signalType = 'BUY';
+          }
+        }
+
+        const rsiIcon = rsiMet ? '🟢' : '🔴';
+        const macdIcon = macdMet ? '🟢' : '🔴';
+        const vwapIcon = vwapMet ? '🟢' : '🔴';
+
+        let signalIcon = '';
+        if (signalTriggered) {
+          signalIcon = signalType === 'SELL' ? ' 📉' : ' 📈';
+        }
+
+        const timeStr = new Date().toLocaleTimeString().padStart(11, ' ');
+        const rsiStr = latestRsi.toFixed(1).padStart(4, ' ');
+        const macdStr = (latestMacd.histogram || 0).toFixed(3).padStart(6, ' ');
+        const priceStr = livePrice.toFixed(2).padStart(6, ' ');
+        const vwapStr = latestVwap.toFixed(2).padStart(6, ' ');
+        const holdingStr = currentAmount.toFixed(4).padStart(9, ' ');
+        const valStr = receiveAmount.toFixed(4).padStart(9, ' ');
+
+        logger.info(`[${timeStr}]${signalIcon} PNL: ${pnlStr.padStart(8, ' ')} ${initialAsset.padEnd(4, ' ')} (${pnlPercStr.padStart(7, ' ')}) | Holding: ${holdingStr} ${startToken.padEnd(4, ' ')} | Val: ~${valStr} ${targetToken.padEnd(4, ' ')} | Price: $${priceStr} | VWAP: $${vwapStr} ${vwapIcon} | RSI: ${rsiStr} ${rsiIcon} | MACD: ${macdStr} ${macdIcon}`);
+
+        if (signalTriggered) {
+          if (signalType === 'SELL') {
+            logger.info(`\n🚨 SELL RECOMMENDATION ALARM 🚨`);
+            logger.info(`SOL is OVERBOUGHT (RSI: ${latestRsi.toFixed(2)}), MACD crossed down, AND Price ($${livePrice.toFixed(2)}) is confirmed below VWAP ($${latestVwap.toFixed(2)})!`);
+          } else {
             logger.info(`\n🚨 BUY RECOMMENDATION ALARM 🚨`);
             logger.info(`SOL is OVERSOLD (RSI: ${latestRsi.toFixed(2)}), MACD crossed up, AND Price ($${livePrice.toFixed(2)}) safely cleared VWAP ($${latestVwap.toFixed(2)})!`);
-            signalTriggered = true;
           }
         }
 
