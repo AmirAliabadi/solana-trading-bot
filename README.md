@@ -15,12 +15,12 @@ Currently, the bot is operating as a **Virtual Simulation**. It accurately queri
 
 ## 📈 Technical Analysis Strategy
 
-The bot utilizes a strict, multi-layered filter of three institutional-grade indicators to execute exact Mean-Reversion trades:
+The bot utilizes a strict, multi-layered filter of three institutional-grade indicators to execute exact Mean-Reversion trades. You can easily adjust the "aggressiveness" of the bot in your `.env` file by changing the RSI thresholds:
 
 1. **RSI (Relative Strength Index) - The Trigger**
-   - **Buy Signal:** RSI drops below `30` (Heavily Oversold).
-   - **Sell Signal:** RSI rallies above `70` (Heavily Overbought).
-   - *Purpose:* Identifies extreme rubber-band deviations in price that are mathematically primed for an immediate, violent bounce.
+   - **Buy Signal:** RSI drops below `BUY_RSI_THRESHOLD` (Default: **40**).
+   - **Sell Signal:** RSI rallies above `SELL_RSI_THRESHOLD` (Default: **60**).
+   - *Strategy:* A higher BUY threshold (e.g., 40 instead of 30) and a lower SELL threshold (e.g., 60 instead of 70) will lead to much higher trade frequency.
 
 2. **MACD (Moving Average Convergence Divergence) - The Momentum Filter**
    - **Buy Signal:** MACD Histogram flips Positive (`> 0`).

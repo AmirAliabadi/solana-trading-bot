@@ -42,6 +42,10 @@ const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL) || 30000;   // Environ
 const SLIPPAGE_BPS = 50;       // 0.5% slippage
 const SOL_RESERVE = 0.05;      // Amount of SOL to always leave untouched for gas
 
+// Strategy Configuration
+const BUY_RSI = parseInt(process.env.BUY_RSI_THRESHOLD) || 40;
+const SELL_RSI = parseInt(process.env.SELL_RSI_THRESHOLD) || 60;
+
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export class JupiterMonitor {
@@ -165,10 +169,10 @@ export class JupiterMonitor {
 
     if (startToken === 'SOL') {
       logger.info(`Goal: Monitor the market to find the best time to swap your SOL to USDC.`);
-      logger.info(`Condition Criteria: Wait for SOL to be OVERBOUGHT (RSI > 70) AND MACD Histogram < 0 AND Price drops below VWAP.`);
+      logger.info(`Condition Criteria: Wait for SOL to be OVERBOUGHT (RSI > ${SELL_RSI}) AND MACD Histogram < 0 AND Price drops below VWAP.`);
     } else {
       logger.info(`Goal: Monitor the market to find the best time to swap your USDC to SOL.`);
-      logger.info(`Condition Criteria: Wait for SOL to be OVERSOLD (RSI < 30) AND MACD Histogram > 0 AND Price climbs above VWAP.`);
+      logger.info(`Condition Criteria: Wait for SOL to be OVERSOLD (RSI < ${BUY_RSI}) AND MACD Histogram > 0 AND Price climbs above VWAP.`);
     }
     
     logger.info(`Polling every ${POLL_INTERVAL/1000} seconds...\n`);
@@ -252,7 +256,7 @@ export class JupiterMonitor {
         let vwapMet = false;
 
         if (startToken === 'SOL') {
-          rsiMet = latestRsi > 70;
+          rsiMet = latestRsi > SELL_RSI;
           macdMet = latestMacd.histogram < 0;
           vwapMet = livePrice < latestVwap;
           
@@ -261,7 +265,7 @@ export class JupiterMonitor {
             signalType = 'SELL';
           }
         } else if (startToken === 'USDC') {
-          rsiMet = latestRsi < 30;
+          rsiMet = latestRsi < BUY_RSI;
           macdMet = latestMacd.histogram > 0;
           vwapMet = livePrice > latestVwap;
           
@@ -293,10 +297,10 @@ export class JupiterMonitor {
         if (signalTriggered) {
           if (signalType === 'SELL') {
             logger.info(`\n🚨 SELL RECOMMENDATION ALARM 🚨`);
-            logger.info(`SOL is OVERBOUGHT (RSI: ${latestRsi.toFixed(2)}), MACD crossed down, AND Price ($${livePrice.toFixed(2)}) is confirmed below VWAP ($${latestVwap.toFixed(2)})!`);
+            logger.info(`SOL is OVERBOUGHT (RSI: ${latestRsi.toFixed(2)} > ${SELL_RSI}), MACD crossed down, AND Price ($${livePrice.toFixed(2)}) is confirmed below VWAP ($${latestVwap.toFixed(2)})!`);
           } else {
             logger.info(`\n🚨 BUY RECOMMENDATION ALARM 🚨`);
-            logger.info(`SOL is OVERSOLD (RSI: ${latestRsi.toFixed(2)}), MACD crossed up, AND Price ($${livePrice.toFixed(2)}) safely cleared VWAP ($${latestVwap.toFixed(2)})!`);
+            logger.info(`SOL is OVERSOLD (RSI: ${latestRsi.toFixed(2)} < ${BUY_RSI}), MACD crossed up, AND Price ($${livePrice.toFixed(2)}) safely cleared VWAP ($${latestVwap.toFixed(2)})!`);
           }
         }
 
@@ -329,9 +333,9 @@ export class JupiterMonitor {
           await this.saveState(state);
 
           if (startToken === 'SOL') {
-            logger.info(`Condition Criteria: Wait for SOL to be OVERBOUGHT (RSI > 70) AND MACD Hist < 0 AND Price < VWAP.\n`);
+            logger.info(`Condition Criteria: Wait for SOL to be OVERBOUGHT (RSI > ${SELL_RSI}) AND MACD Hist < 0 AND Price < VWAP.\n`);
           } else {
-            logger.info(`Condition Criteria: Wait for SOL to be OVERSOLD (RSI < 30) AND MACD Hist > 0 AND Price > VWAP.\n`);
+            logger.info(`Condition Criteria: Wait for SOL to be OVERSOLD (RSI < ${BUY_RSI}) AND MACD Hist > 0 AND Price > VWAP.\n`);
           }
           
           await delay(60000);
