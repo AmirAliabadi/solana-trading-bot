@@ -45,6 +45,7 @@ const SOL_RESERVE = 0.05;      // Amount of SOL to always leave untouched for ga
 // Strategy Configuration
 const BUY_RSI = parseInt(process.env.BUY_RSI_THRESHOLD) || 40;
 const SELL_RSI = parseInt(process.env.SELL_RSI_THRESHOLD) || 60;
+const MAX_PRICE_IMPACT = parseFloat(process.env.MAX_PRICE_IMPACT) || 0.1;
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -213,6 +214,7 @@ export class JupiterMonitor {
 
         const receiveAmount = parseInt(priceQuote.outAmount) / (10 ** TOKENS[targetToken].decimals);
         const livePrice = parseInt(solPriceQuote.outAmount) / (10 ** TOKENS.USDC.decimals);
+        const priceImpact = parseFloat(priceQuote.priceImpactPct) * 100; // Convert to readable percentage
 
         let currentPnl = 0;
         let pnlPercentage = 0;
@@ -279,28 +281,42 @@ export class JupiterMonitor {
         const macdIcon = macdMet ? '🟢' : '🔴';
         const vwapIcon = vwapMet ? '🟢' : '🔴';
 
-        let signalIcon = '';
-        if (signalTriggered) {
-          signalIcon = signalType === 'SELL' ? ' 📉' : ' 📈';
-        }
-
         const timeStr = new Date().toLocaleTimeString().padStart(11, ' ');
         const rsiStr = latestRsi.toFixed(1).padStart(4, ' ');
         const macdStr = (latestMacd.histogram || 0).toFixed(3).padStart(6, ' ');
         const priceStr = livePrice.toFixed(2).padStart(6, ' ');
         const vwapStr = latestVwap.toFixed(2).padStart(6, ' ');
         const holdingStr = currentAmount.toFixed(4).padStart(9, ' ');
-        const valStr = receiveAmount.toFixed(4).padStart(9, ' ');
+        const impactStr = priceImpact.toFixed(3).padStart(5, ' ');
+        const impactIcon = priceImpact > MAX_PRICE_IMPACT ? '🔴' : '🟢';
 
-        logger.info(`[${timeStr}]${signalIcon} PNL: ${pnlStr.padStart(8, ' ')} ${initialAsset.padEnd(4, ' ')} (${pnlPercStr.padStart(7, ' ')}) | Holding: ${holdingStr} ${startToken.padEnd(4, ' ')} | Val: ~${valStr} ${targetToken.padEnd(4, ' ')} | Price: $${priceStr} | VWAP: $${vwapStr} ${vwapIcon} | RSI: ${rsiStr} ${rsiIcon} | MACD: ${macdStr} ${macdIcon}`);
+        const signalPart = signalTriggered ? (signalType === 'SELL' ? '📉 ' : '📈 ') : '   ';
+        const timePart = `[${timeStr}]`;
+        const pnlPart = `PNL: ${pnlStr.padStart(9, ' ')} ${initialAsset.padEnd(4, ' ')} (${pnlPercStr.padStart(7, ' ')})`;
+        const holdPart = `Holding: ${holdingStr} ${startToken.padEnd(5, ' ')}`;
+        const impactPart = `Impact: ${impactStr}% ${impactIcon}`;
+        const pricePart = `Price: $${priceStr}`;
+        const vwapPart = `VWAP: $${vwapStr} ${vwapIcon}`;
+        const rsiPart = `RSI: ${rsiStr} ${rsiIcon}`;
+        const macdPart = `MACD: ${macdStr} ${macdIcon}`;
+
+        // Assemble with strict pipe alignment
+        logger.info(`${signalPart}${timePart} | ${pnlPart} | ${holdPart} | ${impactPart} | ${pricePart} | ${vwapPart} | ${rsiPart} | ${macdPart}`);
 
         if (signalTriggered) {
-          if (signalType === 'SELL') {
-            logger.info(`\n🚨 SELL RECOMMENDATION ALARM 🚨`);
-            logger.info(`SOL is OVERBOUGHT (RSI: ${latestRsi.toFixed(2)} > ${SELL_RSI}), MACD crossed down, AND Price ($${livePrice.toFixed(2)}) is confirmed below VWAP ($${latestVwap.toFixed(2)})!`);
+          if (priceImpact > MAX_PRICE_IMPACT) {
+            logger.warn(`\n⚠️ LIQUIDITY DEPTH WARNING ⚠️`);
+            logger.warn(`TA signals are GREEN, but Price Impact is too high (${priceImpact.toFixed(3)}% > ${MAX_PRICE_IMPACT}%).`);
+            logger.warn(`Skipping this trade to prevent slippage loss caused by thin liquidity.`);
+            signalTriggered = false; // Block state flip
           } else {
-            logger.info(`\n🚨 BUY RECOMMENDATION ALARM 🚨`);
-            logger.info(`SOL is OVERSOLD (RSI: ${latestRsi.toFixed(2)} < ${BUY_RSI}), MACD crossed up, AND Price ($${livePrice.toFixed(2)}) safely cleared VWAP ($${latestVwap.toFixed(2)})!`);
+            if (signalType === 'SELL') {
+              logger.info(`\n🚨 SELL RECOMMENDATION ALARM 🚨`);
+              logger.info(`SOL is OVERBOUGHT (RSI: ${latestRsi.toFixed(2)} > ${SELL_RSI}), MACD crossed down, AND Price ($${livePrice.toFixed(2)}) is confirmed below VWAP ($${latestVwap.toFixed(2)})!`);
+            } else {
+              logger.info(`\n🚨 BUY RECOMMENDATION ALARM 🚨`);
+              logger.info(`SOL is OVERSOLD (RSI: ${latestRsi.toFixed(2)} < ${BUY_RSI}), MACD crossed up, AND Price ($${livePrice.toFixed(2)}) safely cleared VWAP ($${latestVwap.toFixed(2)})!`);
+            }
           }
         }
 

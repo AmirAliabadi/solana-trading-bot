@@ -22,6 +22,10 @@ The bot utilizes a strict, multi-layered filter of three institutional-grade ind
    - **Sell Signal:** RSI rallies above `SELL_RSI_THRESHOLD` (Default: **60**).
    - *Strategy:* A higher BUY threshold (e.g., 40 instead of 30) and a lower SELL threshold (e.g., 60 instead of 70) will lead to much higher trade frequency.
 
+4. **Price Impact Guard (Liquidity Filter)**
+   - **Threshold:** `MAX_PRICE_IMPACT` (Default: **0.1%**).
+   - **Purpose:** Even if all TA signals are green, the bot will block the trade if market liquidity is too thin to support your order size without significant slippage.
+
 2. **MACD (Moving Average Convergence Divergence) - The Momentum Filter**
    - **Buy Signal:** MACD Histogram flips Positive (`> 0`).
    - **Sell Signal:** MACD Histogram flips Negative (`< 0`).
