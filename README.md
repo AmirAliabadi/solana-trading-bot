@@ -29,12 +29,14 @@ The bot utilizes a strict, multi-layered filter of three institutional-grade ind
 2. **MACD (Moving Average Convergence Divergence) - The Momentum Filter**
    - **Buy Signal:** MACD Histogram flips Positive (`> 0`).
    - **Sell Signal:** MACD Histogram flips Negative (`< 0`).
+   - **Config:** You can disable this by setting `USE_MACD=false` or change the periods (`12, 26, 9`) via environment variables.
    - *Purpose:* Prevents buying while an asset is still actively crashing. It forces the bot to wait until the exact moment the immediate downward momentum starts curving upwards.
 
 3. **VWAP (Volume Weighted Average Price) - The Macro Filter**
-   - **Buy Signal:** Live Price breaks *Above* the VWAP.
-   - **Sell Signal:** Live Price breaks *Below* the VWAP.
-   - *Purpose:* Acts as the ultimate safety net. It analyzes true market volume to guarantee you are trading in the direction of institutional money, preventing fake-outs.
+   - **Buy Signal:** Live Price breaks *Above* the VWAP (Adjustable via `VWAP_OFFSET_PERCENT`).
+   - **Sell Signal:** Live Price breaks *Below* the VWAP (Adjustable via `VWAP_OFFSET_PERCENT`).
+   - **Config:** You can disable this entirely by setting `USE_VWAP=false`.
+   - *Strategy:* Adding an offset (e.g., 0.1%) allows the bot to trigger a trade slightly *before* the price physically crosses the VWAP line, which is useful in high-momentum breakouts.
 
 *Note: The bot requires ALL THREE conditions to align simultaneously before it will trigger an alarm and flip its active portfolio state.*
 
@@ -80,3 +82,19 @@ If you ever want to gracefully stop the bot (using `CTRL+C`) and start it back u
 node sol_usdc_trading_bot.js
 ```
 The bot will automatically read the local `trading_state.json` file it created, recover your exact portfolio balances, calculate your PNL, and seamlessly pick up right where it left off!
+
+---
+
+## 🧪 Backtesting & Data Collection
+
+The bot is equipped with a high-fidelity data capture engine. If enabled (`ENABLE_DATA_LOGGING=true`), it will continuously stream market data into `logs/backtest_data.csv`.
+
+**Captured Fields:**
+- `timestamp`: ISO 8601 UTC time.
+- `price`: Live SOL/USDC price.
+- `rsi`: Relative Strength Index.
+- `macd_h`: MACD Histogram value.
+- `vwap`: Volume Weighted Average Price.
+- `impact_pct`: Current market slippage/impact.
+
+This data can be imported into Python (Pandas), Excel, or specialized backtesting software to mathematically validate your strategies before going live.

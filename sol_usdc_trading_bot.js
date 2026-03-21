@@ -24,6 +24,15 @@ const logger = winston.createLogger({
   ]
 });
 
+// Setup Data Logger (CSV for backtesting)
+const dataLogger = winston.createLogger({
+  level: 'info',
+  format: winston.format.printf(({ message }) => message),
+  transports: [
+    new winston.transports.File({ filename: 'logs/backtest_data.csv' })
+  ]
+});
+
 const STATE_FILE = 'trading_state.json';
 
 // Mints and Token configuration
@@ -46,6 +55,15 @@ const SOL_RESERVE = 0.05;      // Amount of SOL to always leave untouched for ga
 const BUY_RSI = parseInt(process.env.BUY_RSI_THRESHOLD) || 40;
 const SELL_RSI = parseInt(process.env.SELL_RSI_THRESHOLD) || 60;
 const MAX_PRICE_IMPACT = parseFloat(process.env.MAX_PRICE_IMPACT) || 0.1;
+const USE_VWAP = process.env.USE_VWAP !== 'false'; // Default to true
+const VWAP_OFFSET = parseFloat(process.env.VWAP_OFFSET_PERCENT) || 0;
+
+const USE_MACD = process.env.USE_MACD !== 'false'; // Default to true
+const MACD_FAST = parseInt(process.env.MACD_FAST_PERIOD) || 12;
+const MACD_SLOW = parseInt(process.env.MACD_SLOW_PERIOD) || 26;
+const MACD_SIGNAL = parseInt(process.env.MACD_SIGNAL_PERIOD) || 9;
+
+const ENABLE_DATA_LOGGING = process.env.ENABLE_DATA_LOGGING === 'true';
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -104,9 +122,9 @@ export class JupiterMonitor {
 
     const macdInput = {
       values: marketData.close,
-      fastPeriod: 12,
-      slowPeriod: 26,
-      signalPeriod: 9,
+      fastPeriod: MACD_FAST,
+      slowPeriod: MACD_SLOW,
+      signalPeriod: MACD_SIGNAL,
       SimpleMAOscillator: false,
       SimpleMASignal: false
     };
@@ -132,6 +150,13 @@ export class JupiterMonitor {
 
     logger.info(`\n================ SIMULATION TRADING BOT ================`);
     
+    if (ENABLE_DATA_LOGGING) {
+      const csvPath = 'logs/backtest_data.csv';
+      if (!existsSync(csvPath) || (await fs.stat(csvPath)).size < 10) {
+        dataLogger.info('timestamp,price,rsi,macd_h,vwap,impact_pct');
+      }
+    }
+
     if (!state) {
       if (!cliAsset || !cliAmount || isNaN(parseFloat(cliAmount))) {
         throw new Error('No state file found. You must provide initial arguments. Example: node sol_usdc_trading_bot.js SOL 3');
@@ -170,10 +195,14 @@ export class JupiterMonitor {
 
     if (startToken === 'SOL') {
       logger.info(`Goal: Monitor the market to find the best time to swap your SOL to USDC.`);
-      logger.info(`Condition Criteria: Wait for SOL to be OVERBOUGHT (RSI > ${SELL_RSI}) AND MACD Histogram < 0 AND Price drops below VWAP.`);
+      const macdSnippet = USE_MACD ? " AND MACD Histogram < 0" : "";
+      const vwapSnippet = USE_VWAP ? " AND Price drops below VWAP" : "";
+      logger.info(`Condition Criteria: Wait for SOL to be OVERBOUGHT (RSI > ${SELL_RSI})${macdSnippet}${vwapSnippet}.`);
     } else {
       logger.info(`Goal: Monitor the market to find the best time to swap your USDC to SOL.`);
-      logger.info(`Condition Criteria: Wait for SOL to be OVERSOLD (RSI < ${BUY_RSI}) AND MACD Histogram > 0 AND Price climbs above VWAP.`);
+      const macdSnippet = USE_MACD ? " AND MACD Histogram > 0" : "";
+      const vwapSnippet = USE_VWAP ? " AND Price climbs above VWAP" : "";
+      logger.info(`Condition Criteria: Wait for SOL to be OVERSOLD (RSI < ${BUY_RSI})${macdSnippet}${vwapSnippet}.`);
     }
     
     logger.info(`Polling every ${POLL_INTERVAL/1000} seconds...\n`);
@@ -259,8 +288,19 @@ export class JupiterMonitor {
 
         if (startToken === 'SOL') {
           rsiMet = latestRsi > SELL_RSI;
-          macdMet = latestMacd.histogram < 0;
-          vwapMet = livePrice < latestVwap;
+          
+          if (USE_MACD) {
+            macdMet = latestMacd.histogram < 0;
+          } else {
+            macdMet = true; // Skip filter
+          }
+          
+          if (USE_VWAP) {
+            const vwapThreshold = latestVwap * (1 + (VWAP_OFFSET / 100));
+            vwapMet = livePrice < vwapThreshold;
+          } else {
+            vwapMet = true; // Skip filter
+          }
           
           if (rsiMet && macdMet && vwapMet) {
             signalTriggered = true;
@@ -268,8 +308,19 @@ export class JupiterMonitor {
           }
         } else if (startToken === 'USDC') {
           rsiMet = latestRsi < BUY_RSI;
-          macdMet = latestMacd.histogram > 0;
-          vwapMet = livePrice > latestVwap;
+
+          if (USE_MACD) {
+            macdMet = latestMacd.histogram > 0;
+          } else {
+            macdMet = true; // Skip filter
+          }
+          
+          if (USE_VWAP) {
+            const vwapThreshold = latestVwap * (1 - (VWAP_OFFSET / 100));
+            vwapMet = livePrice > vwapThreshold;
+          } else {
+            vwapMet = true; // Skip filter
+          }
           
           if (rsiMet && macdMet && vwapMet) {
             signalTriggered = true;
@@ -278,8 +329,8 @@ export class JupiterMonitor {
         }
 
         const rsiIcon = rsiMet ? '🟢' : '🔴';
-        const macdIcon = macdMet ? '🟢' : '🔴';
-        const vwapIcon = vwapMet ? '🟢' : '🔴';
+        const macdIcon = USE_MACD ? (macdMet ? '🟢' : '🔴') : '⚪';
+        const vwapIcon = USE_VWAP ? (vwapMet ? '🟢' : '🔴') : '⚪';
 
         const timeStr = new Date().toLocaleTimeString().padStart(11, ' ');
         const rsiStr = latestRsi.toFixed(1).padStart(4, ' ');
@@ -303,6 +354,12 @@ export class JupiterMonitor {
         // Assemble with strict pipe alignment
         logger.info(`${signalPart}${timePart} | ${pnlPart} | ${holdPart} | ${impactPart} | ${pricePart} | ${vwapPart} | ${rsiPart} | ${macdPart}`);
 
+        // Data Logging for Backtesting (CSV)
+        if (ENABLE_DATA_LOGGING) {
+          const csvRow = `${new Date().toISOString()},${livePrice.toFixed(4)},${latestRsi.toFixed(4)},${(latestMacd.histogram || 0).toFixed(6)},${latestVwap.toFixed(4)},${priceImpact.toFixed(6)}`;
+          dataLogger.info(csvRow);
+        }
+
         if (signalTriggered) {
           if (priceImpact > MAX_PRICE_IMPACT) {
             logger.warn(`\n⚠️ LIQUIDITY DEPTH WARNING ⚠️`);
@@ -312,10 +369,14 @@ export class JupiterMonitor {
           } else {
             if (signalType === 'SELL') {
               logger.info(`\n🚨 SELL RECOMMENDATION ALARM 🚨`);
-              logger.info(`SOL is OVERBOUGHT (RSI: ${latestRsi.toFixed(2)} > ${SELL_RSI}), MACD crossed down, AND Price ($${livePrice.toFixed(2)}) is confirmed below VWAP ($${latestVwap.toFixed(2)})!`);
+              const macdPart = USE_MACD ? `, MACD crossed down` : ``;
+              const vwapPart = USE_VWAP ? `, AND Price ($${livePrice.toFixed(2)}) is confirmed below VWAP ($${latestVwap.toFixed(2)})` : ``;
+              logger.info(`SOL is OVERBOUGHT (RSI: ${latestRsi.toFixed(2)} > ${SELL_RSI})${macdPart}${vwapPart}!`);
             } else {
               logger.info(`\n🚨 BUY RECOMMENDATION ALARM 🚨`);
-              logger.info(`SOL is OVERSOLD (RSI: ${latestRsi.toFixed(2)} < ${BUY_RSI}), MACD crossed up, AND Price ($${livePrice.toFixed(2)}) safely cleared VWAP ($${latestVwap.toFixed(2)})!`);
+              const macdPart = USE_MACD ? `, MACD crossed up` : ``;
+              const vwapPart = USE_VWAP ? `, AND Price ($${livePrice.toFixed(2)}) safely cleared VWAP ($${latestVwap.toFixed(2)})` : ``;
+              logger.info(`SOL is OVERSOLD (RSI: ${latestRsi.toFixed(2)} < ${BUY_RSI})${macdPart}${vwapPart}!`);
             }
           }
         }
@@ -349,9 +410,13 @@ export class JupiterMonitor {
           await this.saveState(state);
 
           if (startToken === 'SOL') {
-            logger.info(`Condition Criteria: Wait for SOL to be OVERBOUGHT (RSI > ${SELL_RSI}) AND MACD Hist < 0 AND Price < VWAP.\n`);
+            const macdSnippet = USE_MACD ? " AND MACD Hist < 0" : "";
+            const vwapSnippet = USE_VWAP ? " AND Price < VWAP" : "";
+            logger.info(`Condition Criteria: Wait for SOL to be OVERBOUGHT (RSI > ${SELL_RSI})${macdSnippet}${vwapSnippet}.\n`);
           } else {
-            logger.info(`Condition Criteria: Wait for SOL to be OVERSOLD (RSI < ${BUY_RSI}) AND MACD Hist > 0 AND Price > VWAP.\n`);
+            const macdSnippet = USE_MACD ? " AND MACD Hist > 0" : "";
+            const vwapSnippet = USE_VWAP ? " AND Price > VWAP" : "";
+            logger.info(`Condition Criteria: Wait for SOL to be OVERSOLD (RSI < ${BUY_RSI})${macdSnippet}${vwapSnippet}.\n`);
           }
           
           await delay(60000);
