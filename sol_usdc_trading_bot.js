@@ -24,13 +24,25 @@ const logger = winston.createLogger({
   ]
 });
 
-// Setup Data Logger (CSV for backtesting)
+// Setup Data Logger (CSV for backtesting, rotate hourly)
 const dataLogger = winston.createLogger({
   level: 'info',
   format: winston.format.printf(({ message }) => message),
   transports: [
-    new winston.transports.File({ filename: 'logs/backtest_data.csv' })
+    new DailyRotateFile({
+      filename: 'data_logs/backtest-data-%DATE%.csv',
+      datePattern: 'YYYY-MM-DD-HH',
+      zippedArchive: false,
+      maxSize: '20m',
+      maxFiles: '14d'
+    })
   ]
+});
+
+// A hacky but efficient way to ensure every new CSV file gets a header
+dataLogger.transports[0].on('new', (newFilename) => {
+  const headers = 'timestamp,price,rsi,macd_h,vwap,impact_pct';
+  fs.writeFile(newFilename, headers + '\n').catch(err => console.error('Failed to write CSV header:', err));
 });
 
 const STATE_FILE = 'trading_state.json';
@@ -151,10 +163,8 @@ export class JupiterMonitor {
     logger.info(`\n================ SIMULATION TRADING BOT ================`);
     
     if (ENABLE_DATA_LOGGING) {
-      const csvPath = 'logs/backtest_data.csv';
-      if (!existsSync(csvPath) || (await fs.stat(csvPath)).size < 10) {
-        dataLogger.info('timestamp,price,rsi,macd_h,vwap,impact_pct');
-      }
+      // With DailyRotateFile, the 'new' event handles headers automatically.
+      // We don't need manual existsSync checks here anymore.
     }
 
     if (!state) {
