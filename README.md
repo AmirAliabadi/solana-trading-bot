@@ -15,6 +15,19 @@ Currently, the bot is operating as a **Virtual Simulation**. It accurately queri
 
 ## 📈 Technical Analysis Strategy
 
+The bot's core logic is now **Modular**. You can swap between different trading algorithms without touching the main engine.
+
+### **Available Strategies:**
+1.  **`MEAN_REVERSION` (Default):** Uses RSI, MACD, and VWAP to find overextended price points (Buys low, Sells high).
+2.  **`TREND_FOLLOWING`:** Uses EMA Crossovers (9/21) and RSI momentum to capture breakout trends.
+3.  **`BOLLINGER_BANDS`:** Uses volatility bands (20, 2) to identify price extremes. Buys at the bottom band, sells at the top band.
+4.  **`ALWAYS_BUY` (Testing):** A test strategy that triggers a buy signal on every poll.
+
+### **How to Switch Strategies:**
+Simply update your `.env` file:
+```env
+ACTIVE_STRATEGY=ALWAYS_BUY
+```
 The bot utilizes a strict, multi-layered filter of three institutional-grade indicators to execute exact Mean-Reversion trades. You can easily adjust the "aggressiveness" of the bot in your `.env` file by changing the RSI thresholds:
 
 1. **RSI (Relative Strength Index) - The Trigger**

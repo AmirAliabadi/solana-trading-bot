@@ -6,6 +6,12 @@ import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import dotenv from 'dotenv';
 
+// Strategies
+import { MeanReversionStrategy } from './strategies/MeanReversionStrategy.js';
+import { AlwaysBuyStrategy } from './strategies/AlwaysBuyStrategy.js';
+import { TrendFollowingStrategy } from './strategies/TrendFollowingStrategy.js';
+import { BollingerBandStrategy } from './strategies/BollingerBandStrategy.js';
+
 dotenv.config();
 
 // Setup Logger (Rotate every hour)
@@ -77,6 +83,32 @@ const MACD_SIGNAL = parseInt(process.env.MACD_SIGNAL_PERIOD) || 9;
 
 const ENABLE_DATA_LOGGING = process.env.ENABLE_DATA_LOGGING === 'true';
 
+const STRATEGIES = {
+  MEAN_REVERSION: MeanReversionStrategy,
+  ALWAYS_BUY: AlwaysBuyStrategy,
+  TREND_FOLLOWING: TrendFollowingStrategy,
+  BOLLINGER_BANDS: BollingerBandStrategy
+};
+
+const ACTIVE_STRATEGY_NAME = process.env.ACTIVE_STRATEGY || 'MEAN_REVERSION';
+const StrategyClass = STRATEGIES[ACTIVE_STRATEGY_NAME] || MeanReversionStrategy;
+const activeStrategy = new StrategyClass({
+  BUY_RSI,
+  SELL_RSI,
+  MAX_PRICE_IMPACT,
+  USE_VWAP,
+  VWAP_OFFSET,
+  USE_MACD,
+  MACD_FAST,
+  MACD_SLOW,
+  MACD_SIGNAL
+});
+
+logger.info(`Strategy Loaded: ${activeStrategy.name}`);
+if (ENABLE_DATA_LOGGING) {
+  logger.info(`Data Logging: ENABLED (Slicing into data_logs/)`);
+}
+
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export class JupiterMonitor {
@@ -128,39 +160,14 @@ export class JupiterMonitor {
     };
   }
 
-  calculateIndicators(marketData) {
-    const rsiInput = { values: marketData.close, period: 14 };
-    const rsiResult = RSI.calculate(rsiInput);
-
-    const macdInput = {
-      values: marketData.close,
-      fastPeriod: MACD_FAST,
-      slowPeriod: MACD_SLOW,
-      signalPeriod: MACD_SIGNAL,
-      SimpleMAOscillator: false,
-      SimpleMASignal: false
-    };
-    const macdResult = MACD.calculate(macdInput);
-
-    const vwapInput = {
-      high: marketData.high,
-      low: marketData.low,
-      close: marketData.close,
-      volume: marketData.volume
-    };
-    const vwapResult = VWAP.calculate(vwapInput);
-
-    const latestRsi = rsiResult[rsiResult.length - 1];
-    const latestMacd = macdResult[macdResult.length - 1];
-    const latestVwap = vwapResult[vwapResult.length - 1];
-
-    return { latestRsi, latestMacd, latestVwap };
-  }
+  // Calculation of indicators is now handled by the Strategy
 
   async runMonitor(cliAsset, cliAmount) {
     let state = await this.loadState();
 
-    logger.info(`\n================ SIMULATION TRADING BOT ================`);
+    logger.info(`\n========================================================`);
+    logger.info(`   SOL-USDC TRADING BOT - ${activeStrategy.name.toUpperCase()}`);
+    logger.info(`========================================================`);
     
     if (ENABLE_DATA_LOGGING) {
       // With DailyRotateFile, the 'new' event handles headers automatically.
@@ -238,8 +245,7 @@ export class JupiterMonitor {
           await delay(POLL_INTERVAL);
           continue;
         }
-
-        const { latestRsi, latestMacd, latestVwap } = this.calculateIndicators(marketData);
+        const indicators = activeStrategy.calculateIndicators(marketData);
 
         let priceQuote, solPriceQuote;
         try {
@@ -290,53 +296,19 @@ export class JupiterMonitor {
         const pnlStr = currentPnl >= 0 ? `+${currentPnl.toFixed(4)}` : `${currentPnl.toFixed(4)}`;
         const pnlPercStr = pnlPercentage >= 0 ? `+${pnlPercentage.toFixed(2)}%` : `${pnlPercentage.toFixed(2)}%`;
 
-        let signalTriggered = false;
-        let signalType = '';
-        let rsiMet = false;
-        let macdMet = false;
-        let vwapMet = false;
+        const { triggered, type, metrics } = activeStrategy.checkSignal(indicators, livePrice, startToken);
+        
+        let signalTriggered = triggered;
+        const signalType = type;
+        
+        // Extract metrics for logging (RSI/MACD/VWAP icons)
+        const rsiMet = metrics.rsiMet.met;
+        const macdMet = metrics.macdMet.met;
+        const vwapMet = metrics.vwapMet.met;
 
-        if (startToken === 'SOL') {
-          rsiMet = latestRsi > SELL_RSI;
-          
-          if (USE_MACD) {
-            macdMet = latestMacd.histogram < 0;
-          } else {
-            macdMet = true; // Skip filter
-          }
-          
-          if (USE_VWAP) {
-            const vwapThreshold = latestVwap * (1 + (VWAP_OFFSET / 100));
-            vwapMet = livePrice < vwapThreshold;
-          } else {
-            vwapMet = true; // Skip filter
-          }
-          
-          if (rsiMet && macdMet && vwapMet) {
-            signalTriggered = true;
-            signalType = 'SELL';
-          }
-        } else if (startToken === 'USDC') {
-          rsiMet = latestRsi < BUY_RSI;
-
-          if (USE_MACD) {
-            macdMet = latestMacd.histogram > 0;
-          } else {
-            macdMet = true; // Skip filter
-          }
-          
-          if (USE_VWAP) {
-            const vwapThreshold = latestVwap * (1 - (VWAP_OFFSET / 100));
-            vwapMet = livePrice > vwapThreshold;
-          } else {
-            vwapMet = true; // Skip filter
-          }
-          
-          if (rsiMet && macdMet && vwapMet) {
-            signalTriggered = true;
-            signalType = 'BUY';
-          }
-        }
+        const latestRsi = metrics.rsiMet.val;
+        const latestMacdHistogram = metrics.macdMet.val;
+        const latestVwap = metrics.vwapMet.val;
 
         const rsiIcon = rsiMet ? '🟢' : '🔴';
         const macdIcon = USE_MACD ? (macdMet ? '🟢' : '🔴') : '⚪';
@@ -344,7 +316,7 @@ export class JupiterMonitor {
 
         const timeStr = new Date().toLocaleTimeString().padStart(11, ' ');
         const rsiStr = latestRsi.toFixed(1).padStart(4, ' ');
-        const macdStr = (latestMacd.histogram || 0).toFixed(3).padStart(6, ' ');
+        const macdStr = latestMacdHistogram.toFixed(3).padStart(6, ' ');
         const priceStr = livePrice.toFixed(2).padStart(6, ' ');
         const vwapStr = latestVwap.toFixed(2).padStart(6, ' ');
         const holdingStr = currentAmount.toFixed(4).padStart(9, ' ');
@@ -366,7 +338,7 @@ export class JupiterMonitor {
 
         // Data Logging for Backtesting (CSV)
         if (ENABLE_DATA_LOGGING) {
-          const csvRow = `${new Date().toISOString()},${livePrice.toFixed(4)},${latestRsi.toFixed(4)},${(latestMacd.histogram || 0).toFixed(6)},${latestVwap.toFixed(4)},${priceImpact.toFixed(6)}`;
+          const csvRow = `${new Date().toISOString()},${livePrice.toFixed(4)},${latestRsi.toFixed(4)},${latestMacdHistogram.toFixed(6)},${latestVwap.toFixed(4)},${priceImpact.toFixed(6)}`;
           dataLogger.info(csvRow);
         }
 
@@ -420,13 +392,11 @@ export class JupiterMonitor {
           await this.saveState(state);
 
           if (startToken === 'SOL') {
-            const macdSnippet = USE_MACD ? " AND MACD Hist < 0" : "";
-            const vwapSnippet = USE_VWAP ? " AND Price < VWAP" : "";
-            logger.info(`Condition Criteria: Wait for SOL to be OVERBOUGHT (RSI > ${SELL_RSI})${macdSnippet}${vwapSnippet}.\n`);
+            logger.info(`Strategy Goal: ${activeStrategy.name}`);
+            logger.info(`Hunting for a ${targetToken} flip...\n`);
           } else {
-            const macdSnippet = USE_MACD ? " AND MACD Hist > 0" : "";
-            const vwapSnippet = USE_VWAP ? " AND Price > VWAP" : "";
-            logger.info(`Condition Criteria: Wait for SOL to be OVERSOLD (RSI < ${BUY_RSI})${macdSnippet}${vwapSnippet}.\n`);
+            logger.info(`Strategy Goal: ${activeStrategy.name}`);
+            logger.info(`Hunting for a ${targetToken} flip...\n`);
           }
           
           await delay(60000);
