@@ -54,7 +54,7 @@ dataLogger.transports[0].on('new', (newFilename) => {
 const STATE_FILE = 'trading_state.json';
 
 // Mints and Token configuration
-const TOKENS = {
+export const TOKENS = {
   SOL: {
     mint: 'So11111111111111111111111111111111111111112',
     decimals: 9,
@@ -67,7 +67,7 @@ const TOKENS = {
 
 const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL) || 30000;   // Environment variable or 30 seconds default
 const SLIPPAGE_BPS = 50;       // 0.5% slippage
-const SOL_RESERVE = 0.05;      // Amount of SOL to always leave untouched for gas
+export const SOL_RESERVE = 0.05;      // Amount of SOL to always leave untouched for gas
 
 // Strategy Configuration
 const BUY_RSI = parseInt(process.env.BUY_RSI_THRESHOLD) || 40;
@@ -83,7 +83,7 @@ const MACD_SIGNAL = parseInt(process.env.MACD_SIGNAL_PERIOD) || 9;
 
 const ENABLE_DATA_LOGGING = process.env.ENABLE_DATA_LOGGING === 'true';
 
-const STRATEGIES = {
+export const STRATEGIES = {
   MEAN_REVERSION: MeanReversionStrategy,
   ALWAYS_BUY: AlwaysBuyStrategy,
   TREND_FOLLOWING: TrendFollowingStrategy,

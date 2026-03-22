@@ -1,0 +1,157 @@
+import fs from 'fs/promises';
+import path from 'path';
+import { STRATEGIES, TOKENS, SOL_RESERVE } from './sol_usdc_trading_bot.js';
+
+async function runBacktest() {
+    const DATA_DIR = './data_logs';
+    
+    // Smart Argument Parsing (Handle node backtest.js 5000 USDC or node backtest.js USDC 5000)
+    let initialAsset = 'USDC';
+    let initialAmount = 5000;
+
+    const arg1 = process.argv[2];
+    const arg2 = process.argv[3];
+
+    if (arg1) {
+        if (!isNaN(parseFloat(arg1))) {
+            initialAmount = parseFloat(arg1);
+            if (arg2) initialAsset = arg2.toUpperCase();
+        } else {
+            initialAsset = arg1.toUpperCase();
+            if (arg2 && !isNaN(parseFloat(arg2))) initialAmount = parseFloat(arg2);
+        }
+    }
+
+    console.log(`\n========================================================`);
+    console.log(`   SOL-USDC BACKTESTING ENGINE - ALL STRATEGIES`);
+    console.log(`   Initial Balance: ${initialAmount} ${initialAsset}`);
+    console.log(`========================================================\n`);
+
+    // 1. Load and Sort all CSV files
+    let files = [];
+    try {
+        files = await fs.readdir(DATA_DIR);
+    } catch (err) {
+        console.error(`Error: Could not read directory ${DATA_DIR}. Make sure it exists.`);
+        return;
+    }
+
+    const csvFiles = files.filter(f => f.endsWith('.csv')).sort();
+    if (csvFiles.length === 0) {
+        console.error("Error: No CSV files found in data_logs/");
+        return;
+    }
+
+    console.log(`Found ${csvFiles.length} log files. Processing data...`);
+
+    // 2. Aggregate all rows
+    let allRows = [];
+    for (const file of csvFiles) {
+        const content = await fs.readFile(path.join(DATA_DIR, file), 'utf-8');
+        const lines = content.trim().split('\n').slice(1); // Skip headers
+        allRows.push(...lines);
+    }
+
+    if (allRows.length === 0) {
+        console.error("Error: CSV files are empty.");
+        return;
+    }
+
+    console.log(`Loaded ${allRows.length} data points. Simulating strategies...\n`);
+
+    // 3. Initialize Strategies and Simulation States
+    const results = [];
+
+    for (const [name, StrategyClass] of Object.entries(STRATEGIES)) {
+        // Instantiate strategy with default config (simulating standard .env settings)
+        const strategy = new StrategyClass({
+            BUY_RSI: 40,
+            SELL_RSI: 60,
+            MAX_PRICE_IMPACT: 0.1,
+            USE_VWAP: true,
+            VWAP_OFFSET: 0,
+            USE_MACD: true
+        });
+
+        let currentAsset = initialAsset;
+        let currentAmount = initialAmount;
+        let tradesCount = 0;
+        let pnl = 0;
+        
+        // Sliding window for TA (standard 100 points history)
+        let priceHistory = {
+            close: [],
+            high: [],
+            low: [],
+            volume: []
+        };
+
+        for (const line of allRows) {
+            if (!line || line.trim() === '') continue;
+            const columns = line.split(',');
+            if (columns.length < 2) continue;
+
+            const [timestamp, priceStr, rsiStr, macdStr, vwapStr, impactStr] = columns;
+            const price = parseFloat(priceStr);
+            if (isNaN(price)) continue;
+
+            const impact = parseFloat(impactStr) || 0;
+
+            // Update sliding window
+            priceHistory.close.push(price);
+            priceHistory.high.push(price); 
+            priceHistory.low.push(price);
+            priceHistory.volume.push(1);
+            if (priceHistory.close.length > 200) {
+                priceHistory.close.shift();
+                priceHistory.high.shift();
+                priceHistory.low.shift();
+                priceHistory.volume.shift();
+            }
+
+            if (priceHistory.close.length < 50) continue; 
+
+            // Strategy Logic
+            const indicators = strategy.calculateIndicators(priceHistory);
+            const { triggered, type } = strategy.checkSignal(indicators, price, currentAsset);
+
+            if (triggered) {
+                tradesCount++;
+                const slippage = (impact / 100) || 0.001; // Default to 0.1% if no impact recorded
+                
+                if (type === 'BUY' && currentAsset === 'USDC') {
+                    const solReceived = (currentAmount / price) * (1 - slippage);
+                    currentAmount = Math.max(0, solReceived);
+                    currentAsset = 'SOL';
+                } else if (type === 'SELL' && currentAsset === 'SOL') {
+                    const tradableSol = Math.max(0, currentAmount - SOL_RESERVE);
+                    const usdcReceived = (tradableSol * price) * (1 - slippage);
+                    currentAmount = Math.max(0, usdcReceived);
+                    currentAsset = 'USDC';
+                }
+            }
+        }
+
+        // Final PNL Calculation
+        const lastRow = allRows[allRows.length - 1].split(',');
+        const finalPrice = parseFloat(lastRow[1]);
+        let finalValue = currentAmount;
+        if (currentAsset !== initialAsset) {
+            finalValue = initialAsset === 'USDC' ? (currentAmount * finalPrice) : (currentAmount / finalPrice);
+        }
+
+        const pnlPerc = ((finalValue - initialAmount) / initialAmount) * 100;
+        console.log(`- ${name.padEnd(20)}: ${finalValue.toFixed(2).padStart(10)} ${initialAsset} | Trades: ${tradesCount.toString().padStart(3)} | PNL: ${pnlPerc.toFixed(2).padStart(6)}%`);
+
+        results.push({
+            Strategy: name,
+            Final_Bal: finalValue.toFixed(2),
+            Trades: tradesCount,
+            PNL_Perc: pnlPerc.toFixed(2) + '%'
+        });
+    }
+
+    console.log(`\n========================================================\n`);
+}
+
+runBacktest();
