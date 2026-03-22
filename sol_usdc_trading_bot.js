@@ -130,8 +130,15 @@ export class JupiterMonitor {
       if (existsSync(STATE_FILE)) {
         const data = await fs.readFile(STATE_FILE, 'utf8');
         const state = JSON.parse(data);
-        // Ensure entryPrice exists for backward compatibility
-        if (state.entryPrice === undefined) state.entryPrice = 0;
+        
+        // Robustness: Handle partial or corrupt state files
+        state.initialAsset = state.initialAsset || 'SOL';
+        state.initialAmount = state.initialAmount !== undefined ? state.initialAmount : 0;
+        state.currentAsset = state.currentAsset || state.initialAsset;
+        state.currentAmount = state.currentAmount !== undefined ? state.currentAmount : state.initialAmount;
+        state.reservedSol = state.reservedSol || 0;
+        state.entryPrice = state.entryPrice || 0;
+        
         return state;
       }
     } catch (error) {
