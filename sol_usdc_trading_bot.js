@@ -11,6 +11,7 @@ import { MeanReversionStrategy } from './strategies/MeanReversionStrategy.js';
 import { AlwaysBuyStrategy } from './strategies/AlwaysBuyStrategy.js';
 import { TrendFollowingStrategy } from './strategies/TrendFollowingStrategy.js';
 import { BollingerBandStrategy } from './strategies/BollingerBandStrategy.js';
+import { ProfitGuardedStrategy } from './strategies/ProfitGuardedStrategy.js';
 
 dotenv.config();
 
@@ -68,6 +69,7 @@ export const TOKENS = {
 const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL) || 30000;   // Environment variable or 30 seconds default
 const SLIPPAGE_BPS = 50;       // 0.5% slippage
 export const SOL_RESERVE = 0.05;      // Amount of SOL to always leave untouched for gas
+const POST_SWAP_DELAY = parseInt(process.env.POST_SWAP_DELAY_MS) || 5000; 
 
 // Strategy Configuration
 const BUY_RSI = parseInt(process.env.BUY_RSI_THRESHOLD) || 40;
@@ -82,6 +84,7 @@ const MACD_SLOW = parseInt(process.env.MACD_SLOW_PERIOD) || 26;
 const MACD_SIGNAL = parseInt(process.env.MACD_SIGNAL_PERIOD) || 9;
 
 const ENABLE_DATA_LOGGING = process.env.ENABLE_DATA_LOGGING === 'true';
+const PROFIT_THRESHOLD = parseFloat(process.env.PROFIT_THRESHOLD_PERCENT) || 0;
 
 export const STRATEGIES = {
   MEAN_REVERSION: MeanReversionStrategy,
@@ -92,7 +95,7 @@ export const STRATEGIES = {
 
 const ACTIVE_STRATEGY_NAME = process.env.ACTIVE_STRATEGY || 'MEAN_REVERSION';
 const StrategyClass = STRATEGIES[ACTIVE_STRATEGY_NAME] || MeanReversionStrategy;
-const activeStrategy = new StrategyClass({
+const baseStrategy = new StrategyClass({
   BUY_RSI,
   SELL_RSI,
   MAX_PRICE_IMPACT,
@@ -103,6 +106,11 @@ const activeStrategy = new StrategyClass({
   MACD_SLOW,
   MACD_SIGNAL
 });
+
+// Wrap with Profit Guard if threshold is set
+const activeStrategy = PROFIT_THRESHOLD > 0 
+    ? new ProfitGuardedStrategy(baseStrategy, PROFIT_THRESHOLD)
+    : baseStrategy;
 
 logger.info(`Strategy Loaded: ${activeStrategy.name}`);
 if (ENABLE_DATA_LOGGING) {
@@ -118,11 +126,18 @@ export class JupiterMonitor {
   }
 
   async loadState() {
-    if (existsSync(STATE_FILE)) {
-      const data = await fs.readFile(STATE_FILE, 'utf8');
-      return JSON.parse(data);
+    try {
+      if (existsSync(STATE_FILE)) {
+        const data = await fs.readFile(STATE_FILE, 'utf8');
+        const state = JSON.parse(data);
+        // Ensure entryPrice exists for backward compatibility
+        if (state.entryPrice === undefined) state.entryPrice = 0;
+        return state;
+      }
+    } catch (error) {
+      logger.error(`Error loading state: ${error.message}`);
     }
-    return null;
+    return null; // Return null if file doesn't exist or error, runMonitor will handle initial state creation
   }
 
   async getQuote(inputToken, outputToken, amountStr, slippageBps = SLIPPAGE_BPS) {
@@ -296,7 +311,7 @@ export class JupiterMonitor {
         const pnlStr = currentPnl >= 0 ? `+${currentPnl.toFixed(4)}` : `${currentPnl.toFixed(4)}`;
         const pnlPercStr = pnlPercentage >= 0 ? `+${pnlPercentage.toFixed(2)}%` : `${pnlPercentage.toFixed(2)}%`;
 
-        const { triggered, type, metrics } = activeStrategy.checkSignal(indicators, livePrice, startToken);
+        const { triggered, type, metrics } = activeStrategy.checkSignal(indicators, livePrice, startToken, state.entryPrice);
         
         let signalTriggered = triggered;
         const signalType = type;
@@ -376,6 +391,7 @@ export class JupiterMonitor {
           state.currentAsset = startToken;
           state.currentAmount = currentAmount;
           state.reservedSol = reservedSol;
+          state.entryPrice = livePrice; // Save the price of this swap for profit guarding
           state.updatedAt = new Date().toISOString();
           await this.saveState(state);
 
@@ -387,7 +403,7 @@ export class JupiterMonitor {
             logger.info(`Hunting for a ${targetToken} flip...\n`);
           }
           
-          await delay(60000);
+          await delay(POST_SWAP_DELAY); // Configurable pause before resuming monitor
           continue; 
         }
 

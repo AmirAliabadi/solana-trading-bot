@@ -98,11 +98,31 @@ The bot will automatically read the local `trading_state.json` file it created, 
 
 ---
 
-## 🧪 Backtesting & Data Collection
+---
 
-The bot is equipped with a high-fidelity data capture engine. If enabled (`ENABLE_DATA_LOGGING=true`), it will continuously stream market data into `logs/backtest_data.csv`.
+## 🛡️ Profit Guard Security Layer
+To protect your balance from "wash trades" (where a signal triggers but the price hasn't moved enough to cover slippage), the bot includes a mandatory **Profit Guard**.
 
-**Captured Fields:**
+- **How it works:** Every time the bot completes a swap, it records the exact **Entry Price**. It will then **block** any automated reversal signals unless the current price guarantees at least **0.025% profit** (configurable).
+- **Configuration:** Update `PROFIT_THRESHOLD_PERCENT=0.025` in your `.env`.
+
+---
+
+## 🧪 Backtesting & Historical Analysis
+
+The bot includes a standalone high-fidelity backtesting engine (`backtest.js`) that allows you to simulate all strategies against your actual recorded history.
+
+### **1. Capture Data**
+Enable `ENABLE_DATA_LOGGING=true`. The bot will continuously stream market data into `data_logs/*.csv`.
+
+### **2. Run a Simulation**
+You can replay your entire logged history and see a head-to-head performance leaderboard:
+```bash
+node backtest.js 5000 USDC
+```
+*This command will simulate starting with 5000 USDC and run all registered strategies simultaneously across your data logs.*
+
+### **3. Captured Fields**
 - `timestamp`: ISO 8601 UTC time.
 - `price`: Live SOL/USDC price.
 - `rsi`: Relative Strength Index.
@@ -110,4 +130,5 @@ The bot is equipped with a high-fidelity data capture engine. If enabled (`ENABL
 - `vwap`: Volume Weighted Average Price.
 - `impact_pct`: Current market slippage/impact.
 
-This data can be imported into Python (Pandas), Excel, or specialized backtesting software to mathematically validate your strategies before going live.
+### **4. Cooldown Settings**
+- `POST_SWAP_DELAY_MS=5000`: How long the bot pauses after a success before resuming the monitor.

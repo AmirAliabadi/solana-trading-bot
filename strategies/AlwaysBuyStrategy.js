@@ -12,11 +12,12 @@ export class AlwaysBuyStrategy {
   }
 
   checkSignal(indicators, livePrice, currentAsset) {
+    const isBuy = currentAsset === 'USDC';
     // This is a dummy strategy that just triggers a BUY signal immediately
     // Only used to verify that the modular architecture works.
     return {
       triggered: true,
-      type: 'BUY',
+      type: isBuy ? 'BUY' : 'SELL',
       metrics: {
         rsiMet: { met: true, val: 50 },
         macdMet: { met: true, val: 0 },

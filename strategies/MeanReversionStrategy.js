@@ -58,7 +58,7 @@ export class MeanReversionStrategy {
       const vwapThreshold = isBuy 
         ? latestVwap * (1 - (this.vwapOffset / 100))
         : latestVwap * (1 + (this.vwapOffset / 100));
-      vwapMet = isBuy ? (livePrice > vwapThreshold) : (livePrice < vwapThreshold);
+      vwapMet = isBuy ? (livePrice >= vwapThreshold) : (livePrice <= vwapThreshold);
     }
 
     const triggered = rsiMet && macdMet && vwapMet;

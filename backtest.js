@@ -1,6 +1,10 @@
 import fs from 'fs/promises';
 import path from 'path';
+import dotenv from 'dotenv';
 import { STRATEGIES, TOKENS, SOL_RESERVE } from './sol_usdc_trading_bot.js';
+import { ProfitGuardedStrategy } from './strategies/ProfitGuardedStrategy.js';
+
+dotenv.config();
 
 async function runBacktest() {
     const DATA_DIR = './data_logs';
@@ -63,21 +67,28 @@ async function runBacktest() {
     const results = [];
 
     for (const [name, StrategyClass] of Object.entries(STRATEGIES)) {
-        // Instantiate strategy with default config (simulating standard .env settings)
+        // Instantiate strategy with keys matching the constructors in strategies/*.js
         const strategy = new StrategyClass({
-            BUY_RSI: 40,
-            SELL_RSI: 60,
+            BUY_RSI_THRESHOLD: 45,
+            SELL_RSI_THRESHOLD: 55,
             MAX_PRICE_IMPACT: 0.1,
             USE_VWAP: true,
-            VWAP_OFFSET: 0,
-            USE_MACD: true
+            VWAP_OFFSET_PERCENT: 0,
+            USE_MACD: true,
+            MACD_FAST_PERIOD: 12,
+            MACD_SLOW_PERIOD: 26,
+            MACD_SIGNAL_PERIOD: 9
         });
 
         let currentAsset = initialAsset;
         let currentAmount = initialAmount;
+        let entryPrice = 0; // Initialize entryPrice for profit guarding
         let tradesCount = 0;
-        let pnl = 0;
         
+        // Wrap base strategy with Profit Guard (mimic bot behavior)
+        const profitGuardThreshold = parseFloat(process.env.PROFIT_THRESHOLD_PERCENT) || 0.025; 
+        const profitGuardedStrategy = new ProfitGuardedStrategy(strategy, profitGuardThreshold);
+
         // Sliding window for TA (standard 100 points history)
         let priceHistory = {
             close: [],
@@ -97,10 +108,11 @@ async function runBacktest() {
 
             const impact = parseFloat(impactStr) || 0;
 
-            // Update sliding window
+            // Update sliding window with a tiny 0.01% spread for H/L 
+            // This prevents indicators from breaking when H=L=C in simple logs
             priceHistory.close.push(price);
-            priceHistory.high.push(price); 
-            priceHistory.low.push(price);
+            priceHistory.high.push(price * 1.0001); 
+            priceHistory.low.push(price * 0.9999);
             priceHistory.volume.push(1);
             if (priceHistory.close.length > 200) {
                 priceHistory.close.shift();
@@ -111,13 +123,23 @@ async function runBacktest() {
 
             if (priceHistory.close.length < 50) continue; 
 
-            // Strategy Logic
-            const indicators = strategy.calculateIndicators(priceHistory);
-            const { triggered, type } = strategy.checkSignal(indicators, price, currentAsset);
+            // Prepare indicators (Prioritize logged data for 100% accuracy, fallback to recalc for new strategies)
+            const recalcIndicators = strategy.calculateIndicators(priceHistory); // Use strategy for indicator calculation
+            const indicators = {
+                ...recalcIndicators,
+                // Overwrite with logged values if they aren't zero
+                latestRsi: parseFloat(rsiStr) || recalcIndicators.latestRsi || 50,
+                latestMacd: { histogram: parseFloat(macdStr) || (recalcIndicators.latestMacd ? recalcIndicators.latestMacd.histogram : 0) },
+                latestVwap: parseFloat(vwapStr) || recalcIndicators.latestVwap || price
+            };
+
+            // Use the profitGuardedStrategy for simulation
+            const { triggered, type, metrics } = profitGuardedStrategy.checkSignal(indicators, price, currentAsset, entryPrice);
 
             if (triggered) {
                 tradesCount++;
                 const slippage = (impact / 100) || 0.001; // Default to 0.1% if no impact recorded
+                entryPrice = price; // Record the entry price for the NEXT swap
                 
                 if (type === 'BUY' && currentAsset === 'USDC') {
                     const solReceived = (currentAmount / price) * (1 - slippage);
