@@ -301,24 +301,8 @@ export class JupiterMonitor {
         let signalTriggered = triggered;
         const signalType = type;
         
-        // Extract metrics for logging (RSI/MACD/VWAP icons)
-        const rsiMet = metrics.rsiMet.met;
-        const macdMet = metrics.macdMet.met;
-        const vwapMet = metrics.vwapMet.met;
-
-        const latestRsi = metrics.rsiMet.val;
-        const latestMacdHistogram = metrics.macdMet.val;
-        const latestVwap = metrics.vwapMet.val;
-
-        const rsiIcon = rsiMet ? '🟢' : '🔴';
-        const macdIcon = USE_MACD ? (macdMet ? '🟢' : '🔴') : '⚪';
-        const vwapIcon = USE_VWAP ? (vwapMet ? '🟢' : '🔴') : '⚪';
-
+        // Prepare static log parts
         const timeStr = new Date().toLocaleTimeString().padStart(11, ' ');
-        const rsiStr = latestRsi.toFixed(1).padStart(4, ' ');
-        const macdStr = latestMacdHistogram.toFixed(3).padStart(6, ' ');
-        const priceStr = livePrice.toFixed(2).padStart(6, ' ');
-        const vwapStr = latestVwap.toFixed(2).padStart(6, ' ');
         const holdingStr = currentAmount.toFixed(4).padStart(9, ' ');
         const impactStr = priceImpact.toFixed(3).padStart(5, ' ');
         const impactIcon = priceImpact > MAX_PRICE_IMPACT ? '🔴' : '🟢';
@@ -328,13 +312,17 @@ export class JupiterMonitor {
         const pnlPart = `PNL: ${pnlStr.padStart(9, ' ')} ${initialAsset.padEnd(4, ' ')} (${pnlPercStr.padStart(7, ' ')})`;
         const holdPart = `Holding: ${holdingStr} ${startToken.padEnd(5, ' ')}`;
         const impactPart = `Impact: ${impactStr}% ${impactIcon}`;
-        const pricePart = `Price: $${priceStr}`;
-        const vwapPart = `VWAP: $${vwapStr} ${vwapIcon}`;
-        const rsiPart = `RSI: ${rsiStr} ${rsiIcon}`;
-        const macdPart = `MACD: ${macdStr} ${macdIcon}`;
 
-        // Assemble with strict pipe alignment
-        logger.info(`${signalPart}${timePart} | ${pnlPart} | ${holdPart} | ${impactPart} | ${pricePart} | ${vwapPart} | ${rsiPart} | ${macdPart}`);
+        const staticParts = `${signalPart}${timePart} | ${pnlPart} | ${holdPart} | ${impactPart}`;
+        const strategyParts = activeStrategy.getLogParts(indicators, livePrice, metrics);
+        
+        // Final Assembly for Terminal
+        logger.info(`${staticParts} | ${strategyParts.join(' | ')}`);
+
+        // Extract raw data for CSV and Alarms (safely handling different strategies)
+        const latestRsi = metrics.rsiMet ? metrics.rsiMet.val : 0;
+        const latestMacdHistogram = metrics.macdMet ? metrics.macdMet.val : 0;
+        const latestVwap = metrics.vwapMet ? metrics.vwapMet.val : livePrice;
 
         // Data Logging for Backtesting (CSV)
         if (ENABLE_DATA_LOGGING) {

@@ -24,4 +24,8 @@ export class AlwaysBuyStrategy {
       }
     };
   }
+
+  getLogParts(indicators, livePrice, metrics) {
+    return [`Price: $${livePrice.toFixed(2).padStart(6, ' ')}`, `STATUS: ALWAYS BUY MODE` ];
+  }
 }

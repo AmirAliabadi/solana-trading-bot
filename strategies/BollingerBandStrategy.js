@@ -54,4 +54,24 @@ export class BollingerBandStrategy {
       }
     };
   }
+
+  getLogParts(indicators, livePrice, metrics) {
+    const { latestBb, latestRsi } = indicators;
+    const { rsiMet, macdMet } = metrics;
+
+    const bbIcon = macdMet.met ? '🟢' : '🔴';
+    const rsiIcon = rsiMet.met ? '🟢' : '🔴';
+
+    const priceStr = livePrice.toFixed(2).padStart(6, ' ');
+    const upperStr = latestBb.upper.toFixed(2).padStart(6, ' ');
+    const lowerStr = latestBb.lower.toFixed(2).padStart(6, ' ');
+    const midStr = latestBb.middle.toFixed(2).padStart(6, ' ');
+    const rsiStr = latestRsi.toFixed(1).padStart(4, ' ');
+
+    return [
+      `Price: $${priceStr}`,
+      `Bands (L/M/U): ${lowerStr}/${midStr}/${upperStr} ${bbIcon}`,
+      `RSI: ${rsiStr} ${rsiIcon}`
+    ];
+  }
 }

@@ -73,4 +73,25 @@ export class MeanReversionStrategy {
       }
     };
   }
+
+  getLogParts(indicators, livePrice, metrics) {
+    const { latestRsi, latestMacd, latestVwap } = indicators;
+    const { rsiMet, macdMet, vwapMet } = metrics;
+
+    const rsiIcon = rsiMet.met ? '🟢' : '🔴';
+    const macdIcon = this.useMacd ? (macdMet.met ? '🟢' : '🔴') : '⚪';
+    const vwapIcon = this.useVwap ? (vwapMet.met ? '🟢' : '🔴') : '⚪';
+
+    const rsiStr = latestRsi.toFixed(1).padStart(4, ' ');
+    const macdStr = latestMacd.histogram.toFixed(3).padStart(6, ' ');
+    const priceStr = livePrice.toFixed(2).padStart(6, ' ');
+    const vwapStr = latestVwap.toFixed(2).padStart(6, ' ');
+
+    return [
+      `Price: $${priceStr}`,
+      `VWAP: $${vwapStr} ${vwapIcon}`,
+      `RSI: ${rsiStr} ${rsiIcon}`,
+      `MACD: ${macdStr} ${macdIcon}`
+    ];
+  }
 }

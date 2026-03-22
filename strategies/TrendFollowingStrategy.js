@@ -47,4 +47,23 @@ export class TrendFollowingStrategy {
       }
     };
   }
+
+  getLogParts(indicators, livePrice, metrics) {
+    const { fastEma, slowEma, latestRsi } = indicators;
+    const { rsiMet, macdMet } = metrics;
+
+    const rsiIcon = rsiMet.met ? '🟢' : '🔴';
+    const emaIcon = macdMet.met ? '🟢' : '🔴';
+
+    const priceStr = livePrice.toFixed(2).padStart(6, ' ');
+    const fastStr = fastEma.toFixed(2).padStart(6, ' ');
+    const slowStr = slowEma.toFixed(2).padStart(6, ' ');
+    const rsiStr = latestRsi.toFixed(1).padStart(4, ' ');
+
+    return [
+      `Price: $${priceStr}`,
+      `EMA(9/21): ${fastStr}/${slowStr} ${emaIcon}`,
+      `RSI: ${rsiStr} ${rsiIcon}`
+    ];
+  }
 }
