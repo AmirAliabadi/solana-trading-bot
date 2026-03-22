@@ -14,6 +14,26 @@
             "date": 1774123216795,
             "name": "data_logs\\backtest-data-2026-03-21-13.csv",
             "hash": "a978bf4e89dfb571cce61d2f8226043ed0a3e6635ca834b18e3ea8034c62dc34"
+        },
+        {
+            "date": 1774126829378,
+            "name": "data_logs\\backtest-data-2026-03-21-14.csv",
+            "hash": "f4a0b90baa3c643e177b4ba09d68ee90228fa1b73338d78699499bacf5105df9"
+        },
+        {
+            "date": 1774130409448,
+            "name": "data_logs\\backtest-data-2026-03-21-15.csv",
+            "hash": "6ce28473b78b9bfb50d15fff3afbb769bd2a0b718e8cae4a2487fb02ceef757f"
+        },
+        {
+            "date": 1774134026023,
+            "name": "data_logs\\backtest-data-2026-03-21-16.csv",
+            "hash": "75d8a109a421ec178f9c31e9f55a2598942fde92e9860e55563b0b9e62724d36"
+        },
+        {
+            "date": 1774137615021,
+            "name": "data_logs\\backtest-data-2026-03-21-17.csv",
+            "hash": "9a5c95319088a65b50d59b361456e6b4d195ac096abb82189bc14d4b4b6aa80d"
         }
     ],
     "hashType": "sha256"
