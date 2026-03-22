@@ -34,6 +34,16 @@
             "date": 1774137615021,
             "name": "data_logs\\backtest-data-2026-03-21-17.csv",
             "hash": "9a5c95319088a65b50d59b361456e6b4d195ac096abb82189bc14d4b4b6aa80d"
+        },
+        {
+            "date": 1774141219848,
+            "name": "data_logs\\backtest-data-2026-03-21-18.csv",
+            "hash": "9c5f78dd1f92b97c3404873d7b88b8ed950faf84268c677dae673011099efd4d"
+        },
+        {
+            "date": 1774144905232,
+            "name": "data_logs\\backtest-data-2026-03-21-19.csv",
+            "hash": "ddf6639e6d4e4ea0051e3efb981f94dcdb27b04a667b1ad6ed892b9d9f7bb699"
         }
     ],
     "hashType": "sha256"
