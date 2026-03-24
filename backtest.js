@@ -163,6 +163,7 @@ async function runBacktest() {
                     const solReceived = (currentAmount / price) * (1 - slippage);
                     currentAmount = Math.max(0, solReceived);
                     currentAsset = 'SOL';
+                    console.log(`[${strategy.name}] BUY  at ${timestamp} | Price: ${price.toFixed(2)}`);
                 } else if (type === 'SELL' && currentAsset === 'SOL') {
                     sellTrades++;
                     entryPrice = price; 
@@ -170,6 +171,7 @@ async function runBacktest() {
                     const usdcReceived = (tradableSol * price) * (1 - slippage);
                     currentAmount = Math.max(0, usdcReceived);
                     currentAsset = 'USDC';
+                    console.log(`[${strategy.name}] SELL at ${timestamp} | Price: ${price.toFixed(2)}`);
                 }
 
             }
