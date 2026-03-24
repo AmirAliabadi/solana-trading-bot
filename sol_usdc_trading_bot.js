@@ -37,13 +37,34 @@ const dataLogger = winston.createLogger({
   format: winston.format.printf(({ message }) => message),
   transports: [
     new DailyRotateFile({
-      filename: 'data_logs/backtest-data-%DATE%.csv',
+      filename: 'data_logs/market-feed-%DATE%.csv',
       datePattern: 'YYYY-MM-DD-HH',
       zippedArchive: false,
       maxSize: '20m',
       maxFiles: '14d'
     })
   ]
+});
+
+// Setup Trade Logger (Dedicated CSV for successful swaps)
+const tradeLogger = winston.createLogger({
+  level: 'info',
+  format: winston.format.printf(({ message }) => message),
+  transports: [
+    new DailyRotateFile({
+      filename: 'logs/trades-%DATE%.csv',
+      datePattern: 'YYYY-MM-DD', // Daily rotation is fine for trades
+      zippedArchive: false,
+      maxSize: '20m',
+      maxFiles: '30d'
+    })
+  ]
+});
+
+// Headers for Trade Logger
+tradeLogger.transports[0].on('new', (newFilename) => {
+  const headers = 'timestamp,type,inputAmount,inputToken,outputAmount,outputToken,price';
+  fs.writeFile(newFilename, headers + '\n').catch(err => console.error('Failed to write Trade CSV header:', err));
 });
 
 // A hacky but efficient way to ensure every new CSV file gets a header
@@ -395,12 +416,20 @@ export class JupiterMonitor {
           startToken = targetToken;
           targetToken = startToken === 'SOL' ? 'USDC' : 'SOL';
           
+          const executionPrice = signalType === 'SELL' 
+            ? receiveAmount / tradeAmount 
+            : tradeAmount / receiveAmount; // For BUY, entry price is USDC spent / SOL received
+
           state.currentAsset = startToken;
           state.currentAmount = currentAmount;
           state.reservedSol = reservedSol;
-          state.entryPrice = livePrice; // Save the price of this swap for profit guarding
+          state.entryPrice = executionPrice; // Save the ACTUAL price paid/received for profit guarding
           state.updatedAt = new Date().toISOString();
           await this.saveState(state);
+
+          // Log to dedicated trade file (using the REAL execution price)
+          const tradeLogEntry = `${new Date().toISOString()},${signalType},${tradeAmount.toFixed(6)},${state.currentAsset === 'SOL' ? 'USDC' : 'SOL'},${receiveAmount.toFixed(6)},${state.currentAsset},${executionPrice.toFixed(4)}`;
+          tradeLogger.info(tradeLogEntry);
 
           if (startToken === 'SOL') {
             logger.info(`Strategy Goal: ${activeStrategy.name}`);

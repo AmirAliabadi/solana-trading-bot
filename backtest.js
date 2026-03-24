@@ -31,35 +31,47 @@ async function runBacktest() {
     console.log(`   Initial Balance: ${initialAmount} ${initialAsset}`);
     console.log(`========================================================\n`);
 
-    // 1. Load and Sort all CSV files
-    let files = [];
+    const LIVE_DIR = './data_logs';
+    const HIST_DIR = './historical_data';
+
+    // 1. Scan for CSV files in both directories
+    let allFiles = [];
     try {
-        files = await fs.readdir(DATA_DIR);
-    } catch (err) {
-        console.error(`Error: Could not read directory ${DATA_DIR}. Make sure it exists.`);
+        const liveFiles = await fs.readdir(LIVE_DIR);
+        allFiles.push(...liveFiles.filter(f => f.endsWith('.csv')).map(f => path.join(LIVE_DIR, f)));
+    } catch (e) {}
+
+    try {
+        const histFiles = await fs.readdir(HIST_DIR);
+        allFiles.push(...histFiles.filter(f => f.endsWith('.csv')).map(f => path.join(HIST_DIR, f)));
+    } catch (e) {}
+
+    if (allFiles.length === 0) {
+        console.error("Error: No CSV files found in data_logs/ or historical_data/");
         return;
     }
 
-    const csvFiles = files.filter(f => f.endsWith('.csv')).sort();
-    if (csvFiles.length === 0) {
-        console.error("Error: No CSV files found in data_logs/");
-        return;
-    }
+    console.log(`Found ${allFiles.length} log files. Processing data...`);
 
-    console.log(`Found ${csvFiles.length} log files. Processing data...`);
-
-    // 2. Aggregate all rows
+    // 2. Aggregate and Sort all rows chronologically
     let allRows = [];
-    for (const file of csvFiles) {
-        const content = await fs.readFile(path.join(DATA_DIR, file), 'utf-8');
+    for (const filePath of allFiles) {
+        const content = await fs.readFile(filePath, 'utf-8');
         const lines = content.trim().split('\n').slice(1); // Skip headers
         allRows.push(...lines);
     }
 
     if (allRows.length === 0) {
-        console.error("Error: CSV files are empty.");
+        console.error("Error: Found log files but they contain no data.");
         return;
     }
+
+    // Sort by timestamp (first column)
+    allRows.sort((a, b) => {
+        const timeA = new Date(a.split(',')[0]).getTime();
+        const timeB = new Date(b.split(',')[0]).getTime();
+        return timeA - timeB;
+    });
 
     console.log(`Loaded ${allRows.length} data points. Simulating strategies...\n`);
 
@@ -83,7 +95,8 @@ async function runBacktest() {
         let currentAsset = initialAsset;
         let currentAmount = initialAmount;
         let entryPrice = 0; // Initialize entryPrice for profit guarding
-        let tradesCount = 0;
+        let buyTrades = 0;
+        let sellTrades = 0;
         
         // Wrap base strategy with Profit Guard (mimic bot behavior)
         const profitGuardThreshold = parseFloat(process.env.PROFIT_THRESHOLD_PERCENT) || 0.025; 
@@ -137,20 +150,29 @@ async function runBacktest() {
             const { triggered, type, metrics } = profitGuardedStrategy.checkSignal(indicators, price, currentAsset, entryPrice);
 
             if (triggered) {
-                tradesCount++;
-                const slippage = (impact / 100) || 0.001; // Default to 0.1% if no impact recorded
-                entryPrice = price; // Record the entry price for the NEXT swap
+                // CAP SLIPPAGE at 1% for backtesting stability. 
+                // Some data points may have corrupted 99% impact values due to API hiccups.
+                const rawSlippage = (impact / 100) || 0.001;
+                const slippage = Math.min(0.01, rawSlippage); 
                 
+                const oldAmount = currentAmount;
+                const oldAsset = currentAsset;
+
                 if (type === 'BUY' && currentAsset === 'USDC') {
+                    buyTrades++;
+                    entryPrice = price; 
                     const solReceived = (currentAmount / price) * (1 - slippage);
                     currentAmount = Math.max(0, solReceived);
                     currentAsset = 'SOL';
                 } else if (type === 'SELL' && currentAsset === 'SOL') {
+                    sellTrades++;
+                    entryPrice = price; 
                     const tradableSol = Math.max(0, currentAmount - SOL_RESERVE);
                     const usdcReceived = (tradableSol * price) * (1 - slippage);
                     currentAmount = Math.max(0, usdcReceived);
                     currentAsset = 'USDC';
                 }
+
             }
         }
 
@@ -163,12 +185,13 @@ async function runBacktest() {
         }
 
         const pnlPerc = ((finalValue - initialAmount) / initialAmount) * 100;
-        console.log(`- ${name.padEnd(20)}: ${finalValue.toFixed(2).padStart(10)} ${initialAsset} | Trades: ${tradesCount.toString().padStart(3)} | PNL: ${pnlPerc.toFixed(2).padStart(6)}%`);
+        console.log(`- ${name.padEnd(20)}: ${finalValue.toFixed(2).padStart(10)} ${initialAsset} | Buys: ${buyTrades.toString().padStart(3)} | Sells: ${sellTrades.toString().padStart(3)} | PNL: ${pnlPerc.toFixed(2).padStart(6)}%`);
 
         results.push({
             Strategy: name,
             Final_Bal: finalValue.toFixed(2),
-            Trades: tradesCount,
+            Buys: buyTrades,
+            Sells: sellTrades,
             PNL_Perc: pnlPerc.toFixed(2) + '%'
         });
     }
