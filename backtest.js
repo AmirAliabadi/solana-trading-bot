@@ -31,23 +31,20 @@ async function runBacktest() {
     console.log(`   Initial Balance: ${initialAmount} ${initialAsset}`);
     console.log(`========================================================\n`);
 
-    const LIVE_DIR = './data_logs';
     const HIST_DIR = './historical_data';
-
-    // 1. Scan for CSV files in both directories
+    
+    // 1. Scan for CSV files only in HIST_DIR
     let allFiles = [];
-    try {
-        const liveFiles = await fs.readdir(LIVE_DIR);
-        allFiles.push(...liveFiles.filter(f => f.endsWith('.csv')).map(f => path.join(LIVE_DIR, f)));
-    } catch (e) {}
-
     try {
         const histFiles = await fs.readdir(HIST_DIR);
         allFiles.push(...histFiles.filter(f => f.endsWith('.csv')).map(f => path.join(HIST_DIR, f)));
-    } catch (e) {}
+    } catch (e) {
+        console.error("Error: Could not read './historical_data' directory.");
+        return;
+    }
 
     if (allFiles.length === 0) {
-        console.error("Error: No CSV files found in data_logs/ or historical_data/");
+        console.error("Error: No CSV files found in historical_data/");
         return;
     }
 

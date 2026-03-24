@@ -12,6 +12,7 @@ import { AlwaysBuyStrategy } from './strategies/AlwaysBuyStrategy.js';
 import { TrendFollowingStrategy } from './strategies/TrendFollowingStrategy.js';
 import { BollingerBandStrategy } from './strategies/BollingerBandStrategy.js';
 import { ProfitGuardedStrategy } from './strategies/ProfitGuardedStrategy.js';
+import SimpleTrendStrategy from './strategies/SimpleTrendStrategy.js';
 
 dotenv.config();
 
@@ -111,7 +112,8 @@ export const STRATEGIES = {
   MEAN_REVERSION: MeanReversionStrategy,
   ALWAYS_BUY: AlwaysBuyStrategy,
   TREND_FOLLOWING: TrendFollowingStrategy,
-  BOLLINGER_BANDS: BollingerBandStrategy
+  BOLLINGER_BANDS: BollingerBandStrategy,
+  SIMPLE_TREND: SimpleTrendStrategy
 };
 
 const ACTIVE_STRATEGY_NAME = process.env.ACTIVE_STRATEGY || 'MEAN_REVERSION';
