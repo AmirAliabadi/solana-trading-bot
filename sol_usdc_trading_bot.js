@@ -105,6 +105,10 @@ const MACD_FAST = parseInt(process.env.MACD_FAST_PERIOD) || 12;
 const MACD_SLOW = parseInt(process.env.MACD_SLOW_PERIOD) || 26;
 const MACD_SIGNAL = parseInt(process.env.MACD_SIGNAL_PERIOD) || 9;
 
+// Simple Trend Configuration
+const SIMPLE_BUY_PCT = parseFloat(process.env.SIMPLE_TREND_BUY_PCT) || 3.0;
+const SIMPLE_SELL_PCT = parseFloat(process.env.SIMPLE_TREND_SELL_PCT) || 4.0;
+
 const ENABLE_DATA_LOGGING = process.env.ENABLE_DATA_LOGGING === 'true';
 const PROFIT_THRESHOLD = parseFloat(process.env.PROFIT_THRESHOLD_PERCENT) || 0;
 
@@ -127,7 +131,9 @@ const baseStrategy = new StrategyClass({
   USE_MACD,
   MACD_FAST,
   MACD_SLOW,
-  MACD_SIGNAL
+  MACD_SIGNAL,
+  SIMPLE_BUY_PCT,
+  SIMPLE_SELL_PCT
 });
 
 // Wrap with Profit Guard if threshold is set

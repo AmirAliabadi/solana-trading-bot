@@ -5,6 +5,10 @@ export default class SimpleTrendStrategy {
         this.name = "SIMPLE_TREND";
         this.lastLow = null;
         this.lastHigh = null;
+        
+        // Percentages (Default 3% / 4%)
+        this.buyThreshold = (parseFloat(config.SIMPLE_BUY_PCT) || 3.0) / 100;
+        this.sellThreshold = (parseFloat(config.SIMPLE_SELL_PCT) || 4.0) / 100;
     }
 
     calculateIndicators(priceHistory) {
@@ -29,8 +33,8 @@ export default class SimpleTrendStrategy {
             // Reset Peak since we're not holding
             this.lastHigh = null;
 
-            // Trigger BUY on 3% rise from the low
-            if (currentPrice >= this.lastLow * 1.03) {
+            // Trigger BUY on X% rise from the low
+            if (currentPrice >= this.lastLow * (1 + this.buyThreshold)) {
                 triggered = true;
                 type = 'BUY';
             }
@@ -43,8 +47,8 @@ export default class SimpleTrendStrategy {
             // Reset Bottom since we're holding
             this.lastLow = null;
 
-            // Trigger SELL on 4% drop from the peak
-            if (currentPrice <= this.lastHigh * 0.96) {
+            // Trigger SELL on X% drop from the peak
+            if (currentPrice <= this.lastHigh * (1 - this.sellThreshold)) {
                 triggered = true;
                 type = 'SELL';
             }

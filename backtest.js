@@ -86,7 +86,9 @@ async function runBacktest() {
             USE_MACD: true,
             MACD_FAST_PERIOD: 12,
             MACD_SLOW_PERIOD: 26,
-            MACD_SIGNAL_PERIOD: 9
+            MACD_SIGNAL_PERIOD: 9,
+            SIMPLE_BUY_PCT: parseFloat(process.env.SIMPLE_TREND_BUY_PCT) || 3.0,
+            SIMPLE_SELL_PCT: parseFloat(process.env.SIMPLE_TREND_SELL_PCT) || 4.0
         });
 
         let currentAsset = initialAsset;

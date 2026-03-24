@@ -20,8 +20,9 @@ The bot's core logic is now **Modular**. You can swap between different trading 
 ### **Available Strategies:**
 1.  **`MEAN_REVERSION` (Default):** Uses RSI, MACD, and VWAP to find overextended price points (Buys low, Sells high).
 2.  **`TREND_FOLLOWING`:** Uses EMA Crossovers (9/21) and RSI momentum to capture breakout trends.
-3.  **`BOLLINGER_BANDS`:** Uses volatility bands (20, 2) to identify price extremes. Buys at the bottom band, sells at the top band.
-4.  **`ALWAYS_BUY` (Testing):** A test strategy that triggers a buy signal on every poll.
+3.  **`BOLLINGER_BANDS`:** Uses volatility bands (20, 2) to identify price extremes.
+4.  **`SIMPLE_TREND`:** A momentum-based approach that triggers on fixed percentage moves (e.g., 3% rise to buy, 4% drop to sell).
+5.  **`ALWAYS_BUY` (Testing):** A test strategy that triggers a buy signal on every poll.
 
 ### **How to Switch Strategies:**
 Simply update your `.env` file:
@@ -35,7 +36,12 @@ The bot utilizes a strict, multi-layered filter of three institutional-grade ind
    - **Sell Signal:** RSI rallies above `SELL_RSI_THRESHOLD` (Default: **60**).
    - *Strategy:* A higher BUY threshold (e.g., 40 instead of 30) and a lower SELL threshold (e.g., 60 instead of 70) will lead to much higher trade frequency.
 
-4. **Price Impact Guard (Liquidity Filter)**
+4. **Simple Trend Thresholds (Percentage Distance)**
+   - **Buy Signal:** Price rises by `SIMPLE_TREND_BUY_PCT` (Default: **3.0%**) from the local bottom.
+   - **Sell Signal:** Price drops by `SIMPLE_TREND_SELL_PCT` (Default: **4.0%**) from the local peak.
+   - *Logic:* This strategy ignores complex TA indicators and relies purely on price momentum and "bounce" strength.
+
+5. **Price Impact Guard (Liquidity Filter)**
    - **Threshold:** `MAX_PRICE_IMPACT` (Default: **0.1%**).
    - **Purpose:** Even if all TA signals are green, the bot will block the trade if market liquidity is too thin to support your order size without significant slippage.
 
@@ -103,8 +109,8 @@ The bot will automatically read the local `trading_state.json` file it created, 
 ## 🛡️ Profit Guard Security Layer
 To protect your balance from "wash trades" (where a signal triggers but the price hasn't moved enough to cover slippage), the bot includes a mandatory **Profit Guard**.
 
-- **How it works:** Every time the bot completes a swap, it records the exact **Entry Price**. It will then **block** any automated reversal signals unless the current price guarantees at least **0.025% profit** (configurable).
-- **Configuration:** Update `PROFIT_THRESHOLD_PERCENT=0.025` in your `.env`.
+- **How it works:** Every time the bot completes a swap, it records the exact **Execution Price**. It will then **block** any automated reversal signals unless the current price guarantees at least a net profit (after slippage).
+- **Configuration:** Update `PROFIT_THRESHOLD_PERCENT=0.2` (Default: **0.2%**) in your `.env`.
 
 ---
 
@@ -112,15 +118,19 @@ To protect your balance from "wash trades" (where a signal triggers but the pric
 
 The bot includes a standalone high-fidelity backtesting engine (`backtest.js`) that allows you to simulate all strategies against your actual recorded history.
 
-### **1. Capture Data**
-Enable `ENABLE_DATA_LOGGING=true`. The bot will continuously stream market data into `data_logs/*.csv`.
-
-### **2. Run a Simulation**
-You can replay your entire logged history and see a head-to-head performance leaderboard:
+### **1. Download High-Res History**
+The bot includes a script to fetch professional market data directly from Binance:
 ```bash
-node backtest.js 5000 USDC
+node download_history.js 2026-01-01 31
 ```
-*This command will simulate starting with 5000 USDC and run all registered strategies simultaneously across your data logs.*
+*This fetches 31 days of 1-minute data starting from Jan 1st into `historical_data/`.*
+
+### **2. Run a Deep Simulation**
+The engine automatically aggregates all historical files, sorts them chronologically, and applies a **1% safety slippage cap** for high-fidelity results:
+```bash
+node backtest.js 60 SOL
+```
+*This simulates all registered strategies across your entire multi-month historical archive.*
 
 ### **3. Captured Fields**
 - `timestamp`: ISO 8601 UTC time.
