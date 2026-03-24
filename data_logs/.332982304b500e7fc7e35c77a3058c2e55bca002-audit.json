@@ -139,6 +139,151 @@
             "date": 1774213209720,
             "name": "data_logs\\backtest-data-2026-03-22-14.csv",
             "hash": "0d7e224582d9f414bc44f2aae38ed0d599a73d3a5675c01e7eed26e010f7ebb8"
+        },
+        {
+            "date": 1774216826432,
+            "name": "data_logs\\backtest-data-2026-03-22-15.csv",
+            "hash": "196284ad9b58e25639e2bed1fe3fe1ea95e5c39adef5a1253ac4ae025d601213"
+        },
+        {
+            "date": 1774220409285,
+            "name": "data_logs\\backtest-data-2026-03-22-16.csv",
+            "hash": "bdb75621e74cba1970b3887c3accf8cdc31196002e4cd949d86273d5dff432ab"
+        },
+        {
+            "date": 1774224024317,
+            "name": "data_logs\\backtest-data-2026-03-22-17.csv",
+            "hash": "39b2800d76084d804217f19a94530ba8bcf51b55acdc3f4e3f445a311b8289d2"
+        },
+        {
+            "date": 1774227609761,
+            "name": "data_logs\\backtest-data-2026-03-22-18.csv",
+            "hash": "d207ee495f2a65adba37df8dd4e55103cf501aedcb4385c965ed42747f0a2234"
+        },
+        {
+            "date": 1774231228089,
+            "name": "data_logs\\backtest-data-2026-03-22-19.csv",
+            "hash": "7b4240ef34de60d5488ffdd65ac3b80a9e6be3d90347cfdbf9938d891b11cd10"
+        },
+        {
+            "date": 1774234816050,
+            "name": "data_logs\\backtest-data-2026-03-22-20.csv",
+            "hash": "425bc06a16f12adb3472801f5e17efe64802a56b5a7f056fbd0af2a40455b3e2"
+        },
+        {
+            "date": 1774238441926,
+            "name": "data_logs\\backtest-data-2026-03-22-21.csv",
+            "hash": "1450bc4ffbdce9572b3bf9a3dc04b832419c6a7be04ec971b4e5b08449e90fd8"
+        },
+        {
+            "date": 1774242043913,
+            "name": "data_logs\\backtest-data-2026-03-22-22.csv",
+            "hash": "4dcfcb7c9e52541d8838d3bcb2f3be4e77fa037263007b866eaad7382be5707b"
+        },
+        {
+            "date": 1774245639715,
+            "name": "data_logs\\backtest-data-2026-03-22-23.csv",
+            "hash": "923c979fdaec3e13fef54f652f70c3becaf510e7f9778eeffde8ecfac68f42ab"
+        },
+        {
+            "date": 1774249235563,
+            "name": "data_logs\\backtest-data-2026-03-23-00.csv",
+            "hash": "b09c199fa26f0b2a8d17461b3785c630fe8d898a417cf60f950276e4182d42c6"
+        },
+        {
+            "date": 1774252832501,
+            "name": "data_logs\\backtest-data-2026-03-23-01.csv",
+            "hash": "4f0a5447094a8f58ff7c38cf405ec216c864500e27ee82e3c1691ad0dd85e4e1"
+        },
+        {
+            "date": 1774256427850,
+            "name": "data_logs\\backtest-data-2026-03-23-02.csv",
+            "hash": "273f51b3b16428c69060d169c7b8760ae85940c8246d76ace4ac875f11c3d3b8"
+        },
+        {
+            "date": 1774260029167,
+            "name": "data_logs\\backtest-data-2026-03-23-03.csv",
+            "hash": "df59dc1ceb3eb7340cbc18b941b04ff5201fe074a561c35afe1df80834d5b767"
+        },
+        {
+            "date": 1774263626199,
+            "name": "data_logs\\backtest-data-2026-03-23-04.csv",
+            "hash": "3ab16021dd59176c5eea86b58179856e8c77ea0030449facb10f6a2796653a55"
+        },
+        {
+            "date": 1774267225998,
+            "name": "data_logs\\backtest-data-2026-03-23-05.csv",
+            "hash": "7b486e30ebb0301d62972035ec8877838af63a2633f4dee1638e24252a866d65"
+        },
+        {
+            "date": 1774270823775,
+            "name": "data_logs\\backtest-data-2026-03-23-06.csv",
+            "hash": "38f39d60fb8b8bb03b04c6397884c12a3b0730bca4a31f10817a6c367e9d158f"
+        },
+        {
+            "date": 1774274420704,
+            "name": "data_logs\\backtest-data-2026-03-23-07.csv",
+            "hash": "ed324258bccaeff6477f4799bb0060b78ca8ab90453ef76f47b334842df06acf"
+        },
+        {
+            "date": 1774278015030,
+            "name": "data_logs\\backtest-data-2026-03-23-08.csv",
+            "hash": "d76f80f52a3cc70e6fcb405eec993ffb76caca5bb73dcce2eafcb68dd8e76247"
+        },
+        {
+            "date": 1774281611969,
+            "name": "data_logs\\backtest-data-2026-03-23-09.csv",
+            "hash": "ce7f9b87000e6682af6d05bc52f555822aa164d84366df7a7e3fcf9ab000aada"
+        },
+        {
+            "date": 1774285208270,
+            "name": "data_logs\\backtest-data-2026-03-23-10.csv",
+            "hash": "d7daee7e6784de78146dceb410fe6c675db6d7a6969f6f6893b58b20a134332f"
+        },
+        {
+            "date": 1774288804404,
+            "name": "data_logs\\backtest-data-2026-03-23-11.csv",
+            "hash": "24f4a8a14903815e45ade554e39d868f74a975cf31cafb7167f79bef41f05194"
+        },
+        {
+            "date": 1774292460328,
+            "name": "data_logs\\backtest-data-2026-03-23-12.csv",
+            "hash": "d5130004a07e7975992a22fdea0416a76ef1ac197b59c7a330731dd4688d7e9c"
+        },
+        {
+            "date": 1774296053833,
+            "name": "data_logs\\backtest-data-2026-03-23-13.csv",
+            "hash": "85f37ca382cc9b4af97d4812789a7f782167ee7a28c5011a712702ff5cd4caed"
+        },
+        {
+            "date": 1774299646136,
+            "name": "data_logs\\backtest-data-2026-03-23-14.csv",
+            "hash": "a11d9cfeed1d8d4585d8be775e40604499d7bbb5dbb9ae9e934ba9216c81e7ce"
+        },
+        {
+            "date": 1774303239147,
+            "name": "data_logs\\backtest-data-2026-03-23-15.csv",
+            "hash": "066958e53afdb45e7551420e3a6dd654bb629c6569d0e5b68c659e3b727e0956"
+        },
+        {
+            "date": 1774306833617,
+            "name": "data_logs\\backtest-data-2026-03-23-16.csv",
+            "hash": "92a8685e40c5bf43708f1e01a183721df5d683c4a7b2da75af7ddb03b27e1b44"
+        },
+        {
+            "date": 1774310429666,
+            "name": "data_logs\\backtest-data-2026-03-23-17.csv",
+            "hash": "0989051880456c12b0d43abc7cd9282fb3ab5709fb6d2cc23b72c770d8d46db2"
+        },
+        {
+            "date": 1774314024318,
+            "name": "data_logs\\backtest-data-2026-03-23-18.csv",
+            "hash": "3d24fdc3c86bdab5bfd5e6997e427706b0433b9eadae020eec7f2f04f7aadc31"
+        },
+        {
+            "date": 1774317617550,
+            "name": "data_logs\\backtest-data-2026-03-23-19.csv",
+            "hash": "b2be1f86cb73340cd8589a26e2951ae81370c5ea10f07f5c50c810ef316c46e1"
         }
     ],
     "hashType": "sha256"
