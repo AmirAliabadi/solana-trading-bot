@@ -9,7 +9,7 @@ dotenv.config();
 async function runBacktest() {
     const DATA_DIR = './data_logs';
     
-    // Smart Argument Parsing (Handle node backtest.js 5000 USDC or node backtest.js USDC 5000)
+    // Smart Argument Parsing
     let initialAsset = 'USDC';
     let initialAmount = 5000;
 
