@@ -219,28 +219,22 @@ export class JupiterMonitor {
     logger.info(`\n========================================================`);
     logger.info(`   SOL-USDC TRADING BOT - ${activeStrategy.name.toUpperCase()}`);
     logger.info(`========================================================`);
-    
-    if (ENABLE_DATA_LOGGING) {
-      // With DailyRotateFile, the 'new' event handles headers automatically.
-      // We don't need manual existsSync checks here anymore.
-    }
 
-    if (!state) {
-      if (!cliAsset || !cliAmount || isNaN(parseFloat(cliAmount))) {
-        throw new Error('No state file found. You must provide initial arguments. Example: node sol_usdc_trading_bot.js SOL 3');
-      }
-
+    // CLI Arguments take priority for starting a "fresh" session
+    if (cliAsset && cliAmount && !isNaN(parseFloat(cliAmount))) {
       state = {
         initialAsset: cliAsset.toUpperCase(),
         initialAmount: parseFloat(cliAmount),
         currentAsset: cliAsset.toUpperCase(),
         currentAmount: parseFloat(cliAmount),
         reservedSol: 0,
+        entryPrice: 0,
         updatedAt: new Date().toISOString()
       };
-      
       await this.saveState(state);
-      logger.info(`Starting completely fresh virtual session: ${state.initialAmount} ${state.initialAsset}`);
+      logger.info(`Starting completely fresh virtual session (CLI Override): ${state.initialAmount} ${state.initialAsset}`);
+    } else if (!state) {
+      throw new Error('No state file found and no CLI arguments provided. Example: node sol_usdc_trading_bot.js SOL 60');
     } else {
       logger.info(`Loaded previous trading session from ${STATE_FILE}. Resuming...`);
       logger.info(`Initial Portfolio was: ${state.initialAmount.toFixed(4)} ${state.initialAsset}`);

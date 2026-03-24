@@ -56,5 +56,17 @@ export default class SimpleTrendStrategy {
 
         return { triggered, type, metrics: { lastLow: this.lastLow, lastHigh: this.lastHigh } };
     }
+
+    getLogParts(indicators, livePrice, metrics) {
+        let parts = [];
+        if (this.lastLow) {
+            const dist = ((livePrice - this.lastLow) / this.lastLow) * 100;
+            parts.push(`LOW: ${this.lastLow.toFixed(2)} [${dist.toFixed(1)}%]`);
+        } else if (this.lastHigh) {
+            const dist = ((livePrice - this.lastHigh) / this.lastHigh) * 100;
+            parts.push(`PEAK: ${this.lastHigh.toFixed(2)} [${dist.toFixed(1)}%]`);
+        }
+        return parts;
+    }
 }
 
