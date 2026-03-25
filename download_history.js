@@ -15,7 +15,7 @@ async function downloadHistory() {
 
     if (!startDateStr || isNaN(numDays)) {
         console.log("Usage: node download_history.js <startDate_YYYY-MM-DD> <numDays>");
-        console.log("Example: node download_history.js 2024-03-01 7");
+        console.log("Example: node download_history.js 2025-11-01 150");
         return;
     }
 
@@ -30,23 +30,30 @@ async function downloadHistory() {
         return;
     }
 
-    const endTime = startTime + (numDays * 24 * 60 * 60 * 1000);
+    const totalEndTime = startTime + (numDays * 24 * 60 * 60 * 1000);
     const now = Date.now();
-    const actualEndTime = Math.min(endTime, now);
+    const actualEndTime = Math.min(totalEndTime, now);
 
     console.log(`\n========================================================`);
-    console.log(`   SOLANA HISTORICAL DATA DOWNLOADER`);
+    console.log(`   SOLANA HISTORICAL DATA DOWNLOADER (OHLCV+)`);
     console.log(`   Symbol: ${symbol} | Interval: ${interval}`);
-    console.log(`   Period: ${new Date(startTime).toISOString()} to ${new Date(actualEndTime).toISOString()}`);
+    console.log(`   Total Period: ${new Date(startTime).toISOString()} to ${new Date(actualEndTime).toISOString()}`);
     console.log(`========================================================\n`);
 
-    let currentStartTime = startTime;
-    let allData = [];
-    const fileName = `historical-${startDateStr}-${numDays}d.csv`;
-    const filePath = path.join(DATA_DIR, fileName);
-
-    // Create data_logs directory if it doesn't exist
     await fs.mkdir(DATA_DIR, { recursive: true });
+
+    let currentStartTime = startTime;
+    let currentMonthStr = "";
+    let monthData = [];
+
+    const saveMonthData = async (monthStr, data) => {
+        if (data.length === 0) return;
+        const fileName = `historical-${monthStr}.csv`;
+        const filePath = path.join(DATA_DIR, fileName);
+        const header = "timestamp,open,high,low,close,volume,quoteVolume,trades,takerBaseVolume,takerQuoteVolume\n";
+        await fs.writeFile(filePath, header + data.join('\n'));
+        console.log(`✅ Saved ${data.length} records to ${filePath}`);
+    };
 
     while (currentStartTime < actualEndTime) {
         const url = `https://api.binance.us/api/v3/klines?symbol=${symbol}&interval=${interval}&startTime=${currentStartTime}&limit=${limit}`;
@@ -65,40 +72,53 @@ async function downloadHistory() {
                 break;
             }
 
-            // data format: [ [openTime, open, high, low, close, volume, closeTime, ...], ... ]
             for (const kline of data) {
                 const openTime = kline[0];
-                const closePrice = kline[4];
-                
                 if (openTime >= actualEndTime) break;
 
-                // Format: timestamp,price,rsi,macd_h,vwap,impact_pct
-                // Indicators are set to 0 and will be recalculated by backtest.js
-                allData.push(`${new Date(openTime).toISOString()},${closePrice},0,0,0,0`);
+                const date = new Date(openTime);
+                const monthStr = date.toISOString().slice(0, 7); // "YYYY-MM"
+
+                if (currentMonthStr === "") {
+                    currentMonthStr = monthStr;
+                } else if (currentMonthStr !== monthStr) {
+                    await saveMonthData(currentMonthStr, monthData);
+                    monthData = [];
+                    currentMonthStr = monthStr;
+                }
+
+                // Format: timestamp,open,high,low,close,volume,quoteVolume,trades,takerBaseVolume,takerQuoteVolume
+                const row = [
+                    date.toISOString(),
+                    kline[1], // Open
+                    kline[2], // High
+                    kline[3], // Low
+                    kline[4], // Close
+                    kline[5], // Volume
+                    kline[7], // Quote Volume
+                    kline[8], // Trades
+                    kline[9], // Taker Base Volume
+                    kline[10] // Taker Quote Volume
+                ].join(',');
+                
+                monthData.push(row);
             }
 
             const lastOpenTime = data[data.length - 1][0];
-            console.log(`Fetched until ${new Date(lastOpenTime).toLocaleString()}... (${allData.length} records)`);
+            process.stdout.write(`\rPulled until ${new Date(lastOpenTime).toLocaleString()}...`);
 
-            // Move to the next chunk
             currentStartTime = lastOpenTime + 1;
-
-            // Simple rate limit protection
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 50));
 
         } catch (error) {
-            console.error(`Error fetching data: ${error.message}`);
+            console.error(`\nError fetching data: ${error.message}`);
             break;
         }
     }
 
-    if (allData.length > 0) {
-        const header = "timestamp,price,rsi,macd_h,vwap,impact_pct\n";
-        await fs.writeFile(filePath, header + allData.join('\n'));
-        console.log(`\nSuccess! Downloaded ${allData.length} records to ${filePath}`);
-        console.log(`You can now run 'node backtest.js' to include this data in your simulations.`);
-    } else {
-        console.log("\nNo data was downloaded.");
+    if (monthData.length > 0) {
+        console.log(""); // New line after \r
+        await saveMonthData(currentMonthStr, monthData);
     }
 }
 
