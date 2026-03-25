@@ -247,6 +247,10 @@ export class JupiterMonitor {
       logger.info(`\n`);
     }
 
+    // Startup Notification
+    const startupMsg = `**Bot Initialized**\n**Strategy**: ${activeStrategy.name}\n**Portfolio**: ${state.currentAmount.toFixed(4)} ${state.currentAsset}`;
+    sendDiscordNotification(DISCORD_WEBHOOK_URL, startupMsg, 0x3498DB); // Blue for startup
+
     let { initialAsset, initialAmount } = state;
     let startToken = state.currentAsset;
     let targetToken = startToken === 'SOL' ? 'USDC' : 'SOL';
