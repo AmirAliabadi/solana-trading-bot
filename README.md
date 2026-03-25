@@ -9,7 +9,8 @@ Currently, the bot is operating as a **Virtual Simulation**. It accurately queri
 - **Trend Confirmation Filters:** Protects from "falling knives" by requiring MACD Reversal alignment and Volume Weighted Average Price (VWAP) breakouts.
 - **Auto-Compounding:** Re-invests 100% of profit back into the active trading stack natively.
 - **Persistent State Tracking:** Constantly writes your current real-time portfolio balance to a local `json` database so you can seamlessly shut down the bot and resume exactly where you left off.
-- **Hourly Native Logs:** Spits out clean, professional metrics directly to the console and archives everything cleanly in rotated background files.
+- **Hourly Native Logs**: Spits out clean, professional metrics directly to the console and archives everything cleanly in rotated background files.
+- **Discord Alerts**: Sends high-fidelity notifications for bot startup and real-time BUY/SELL recommendations directly to your server.
 
 ---
 
@@ -20,9 +21,10 @@ The bot's core logic is now **Modular**. You can swap between different trading 
 ### **Available Strategies:**
 1.  **`MEAN_REVERSION` (Default):** Uses RSI, MACD, and VWAP to find overextended price points (Buys low, Sells high).
 2.  **`TREND_FOLLOWING`:** Uses EMA Crossovers (9/21) and RSI momentum to capture breakout trends.
-3.  **`BOLLINGER_BANDS`:** Uses volatility bands (20, 2) to identify price extremes.
-4.  **`SIMPLE_TREND`:** A momentum-based approach that triggers on fixed percentage moves (e.g., 3% rise to buy, 4% drop to sell).
-5.  **`ALWAYS_BUY` (Testing):** A test strategy that triggers a buy signal on every poll.
+3.  **`BOLLINGER_BANDS`**: Uses volatility bands (20, 2) to identify price extremes.
+4.  **`SIMPLE_TREND`**: A momentum-based approach that triggers on fixed percentage moves (e.g., 3% rise to buy).
+5.  **`VOLUME_BREAKOUT`**: Institutional-grade breakout hunter that triggers when price increases on massive 1m volume spikes (3x+ average).
+6.  **`ALWAYS_BUY` (Testing)**: A test strategy that triggers a buy signal on every poll.
 
 ### **How to Switch Strategies:**
 Simply update your `.env` file:
@@ -40,6 +42,11 @@ The bot utilizes a strict, multi-layered filter of three institutional-grade ind
    - **Buy Signal:** Price rises by `SIMPLE_TREND_BUY_PCT` (Default: **3.0%**) from the local bottom.
    - **Sell Signal:** Price drops by `SIMPLE_TREND_SELL_PCT` (Default: **4.0%**) from the local peak.
    - *Logic:* This strategy ignores complex TA indicators and relies purely on price momentum and "bounce" strength.
+
+5. **Volume Breakout (Momentum Hunter)**
+   - **Buy Signal:** Price increases AND Volume is > `VOLUME_MULTIPLIER` (Default: **3.0x**) of the `VOLUME_MA_PERIOD`.
+   - **Sell Signal:** A simple 3% Trailing Stop or RSI > 70.
+   - *Logic:* This strategy waits for high-conviction "Institutional" moves where price jumps coincide with massive volume spikes.
 
 5. **Price Impact Guard (Liquidity Filter)**
    - **Threshold:** `MAX_PRICE_IMPACT` (Default: **0.1%**).
@@ -86,6 +93,7 @@ The bot requires a `.env` file to function properly.
 cp .env.example .env
 ```
 2. Open the newly created `.env` file in your editor and optionally fill in your Private Key (if live trading is enabled) and custom `POLL_INTERVAL` configuration.
+3. **Discord Setup**: Paste your Discord Webhook URL into `DISCORD_WEBHOOK_URL` to receive real-time alerts.
 
 
 ### 5. Start the Trading Bot
@@ -132,12 +140,12 @@ node backtest.js 60 SOL
 ```
 *This simulates all registered strategies across your entire multi-month historical archive.*
 
-### **3. Captured Fields**
+### **3. Captured Fields (OHLCV+)**
 - `timestamp`: ISO 8601 UTC time.
-- `price`: Live SOL/USDC price.
-- `rsi`: Relative Strength Index.
-- `macd_h`: MACD Histogram value.
-- `vwap`: Volume Weighted Average Price.
+- `open/high/low/close`: Full candle price data.
+- `volume`: Total trading volume for the minute.
+- `trades`: Number of individual trades in the minute.
+- `quoteVolume`: Total USDC value traded.
 - `impact_pct`: Current market slippage/impact.
 
 ### **4. Cooldown Settings**
