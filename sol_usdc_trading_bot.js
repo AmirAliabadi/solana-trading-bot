@@ -13,6 +13,7 @@ import { TrendFollowingStrategy } from './strategies/TrendFollowingStrategy.js';
 import { BollingerBandStrategy } from './strategies/BollingerBandStrategy.js';
 import { ProfitGuardedStrategy } from './strategies/ProfitGuardedStrategy.js';
 import SimpleTrendStrategy from './strategies/SimpleTrendStrategy.js';
+import { sendDiscordNotification } from './utils/notify.js';
 
 dotenv.config();
 
@@ -111,6 +112,7 @@ const SIMPLE_SELL_PCT = parseFloat(process.env.SIMPLE_TREND_SELL_PCT) || 4.0;
 
 const ENABLE_DATA_LOGGING = process.env.ENABLE_DATA_LOGGING === 'true';
 const PROFIT_THRESHOLD = parseFloat(process.env.PROFIT_THRESHOLD_PERCENT) || 0;
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 
 export const STRATEGIES = {
   MEAN_REVERSION: MeanReversionStrategy,
@@ -399,6 +401,12 @@ export class JupiterMonitor {
         if (signalTriggered) {
           logger.info(`Execute your manual swap to ${targetToken} right now to secure a statistically higher win rate!`);
           logger.info(`\x07`);
+          
+          // Discord Notification
+          const discordColor = signalType === 'BUY' ? 0x00FF00 : 0xFF0000;
+          const discordTitle = signalType === 'BUY' ? "🟢 BUY RECOMMENDATION" : "🔴 SELL RECOMMENDATION";
+          const discordMsg = `**Action**: ${signalType} SOL\n**Price**: $${livePrice.toFixed(2)}\n**PNL**: ${pnlPercStr} (${currentPnl.toFixed(4)} ${initialAsset})\n**Strategy**: ${activeStrategy.name}\n\n*Execute your swap to ${targetToken} now!*`;
+          sendDiscordNotification(DISCORD_WEBHOOK_URL, discordMsg, discordColor);
           
           logger.info(`\n================ STATE FLIP ================`);
           

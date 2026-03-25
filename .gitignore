@@ -1,6 +1,5 @@
 node_modules/
 .env
 logs/
+data_logs/
 trading_state.json
-data_logs/.5140b37e547f4fcce938fa38317bff701a580fe2-audit.json
-data_logs/.332982304b500e7fc7e35c77a3058c2e55bca002-audit.json
