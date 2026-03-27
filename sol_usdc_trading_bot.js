@@ -201,7 +201,8 @@ export class JupiterMonitor {
   }
 
   async fetchMarketData() {
-    const apiUrl = 'https://api.binance.us/api/v3/klines?symbol=SOLUSDT&interval=1m&limit=100';
+    const interval = process.env.BINANCE_INTERVAL || '1m';
+    const apiUrl = `https://api.binance.us/api/v3/klines?symbol=SOLUSDT&interval=${interval}&limit=100`;
     const response = await fetch(apiUrl);
     const data = await response.json();
     

@@ -1,6 +1,6 @@
 # Solana Auto-Compounding TA Trading Bot (Virtual)
 
-This is a fully automated Crypto Spot Trading Bot designed specifically for the **SOL/USDC** pair using the Jupiter `v6` Swap API. It watches the market on the 1-minute timeframe using data directly from Binance and mathematically determines optimal trade entries using purely quantitative Technical Analysis.
+This is a fully automated Crypto Spot Trading Bot designed specifically for the **SOL/USDC** pair using the Jupiter `v6` Swap API. It watches the market on a configurable timeframe (e.g., `1m`, `15m`, `1h`) using data directly from Binance and mathematically determines optimal trade entries using purely quantitative Technical Analysis.
 
 Currently, the bot is operating as a **Virtual Simulation**. It accurately queries the blockchain for live quotes and strictly tracks PNL and gas fees, but does *not* sign live transactions with your private key. 
 
@@ -93,7 +93,8 @@ The bot requires a `.env` file to function properly.
 cp .env.example .env
 ```
 2. Open the newly created `.env` file in your editor and optionally fill in your Private Key (if live trading is enabled) and custom `POLL_INTERVAL` configuration.
-3. **Discord Setup**: Paste your Discord Webhook URL into `DISCORD_WEBHOOK_URL` to receive real-time alerts.
+3. **Set Timeframe**: Define your target chart resolution by changing `BINANCE_INTERVAL` (Options: `1m`, `5m`, `15m`, `1h`). Higher timeframes act as a powerful filter against intraday noise.
+4. **Discord Setup**: Paste your Discord Webhook URL into `DISCORD_WEBHOOK_URL` to receive real-time alerts.
 
 
 ### 5. Start the Trading Bot
