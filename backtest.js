@@ -9,28 +9,33 @@ import { GridScalperStrategy } from './strategies/GridScalperStrategy.js';
 dotenv.config();
 
 async function runBacktest() {
-    const HIST_DIR = './historical_data';
-    
     // Smart Argument Parsing
     let initialAsset = 'SOL';
     let initialAmount = 60;
+    let targetInterval = '1m';
 
     const arg1 = process.argv[2];
     const arg2 = process.argv[3];
+    const arg3 = process.argv[4]; // Optional interval parameter
 
     if (arg1) {
         if (!isNaN(parseFloat(arg1))) {
             initialAmount = parseFloat(arg1);
             if (arg2) initialAsset = arg2.toUpperCase();
+            if (arg3) targetInterval = arg3;
         } else {
             initialAsset = arg1.toUpperCase();
             if (arg2 && !isNaN(parseFloat(arg2))) initialAmount = parseFloat(arg2);
+            if (arg3) targetInterval = arg3;
         }
     }
 
+    const HIST_DIR = `./historical_data/${targetInterval}`;
+
     console.log(`\n========================================================`);
     console.log(`   SOL-USDC BACKTESTING ENGINE - ALL STRATEGIES`);
-    console.log(`   Initial Balance: ${initialAmount} ${initialAsset}`);
+    console.log(`   Interval: ${targetInterval} | Initial Balance: ${initialAmount} ${initialAsset}`);
+    console.log(`   Target Directory: ${HIST_DIR}`);
     console.log(`========================================================\n`);
 
     // 1. Scan for CSV files in historical_data/

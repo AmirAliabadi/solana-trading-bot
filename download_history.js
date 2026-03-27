@@ -12,16 +12,26 @@ import path from 'path';
 async function downloadHistory() {
     const startDateStr = process.argv[2];
     const numDays = parseFloat(process.argv[3]);
+    const intervalArg = process.argv[4] || '1m';
+
+    const validIntervals = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M'];
 
     if (!startDateStr || isNaN(numDays)) {
-        console.log("Usage: node download_history.js <startDate_YYYY-MM-DD> <numDays>");
-        console.log("Example: node download_history.js 2025-11-01 150");
+        console.log("Usage: node download_history.js <startDate_YYYY-MM-DD> <numDays> [interval]");
+        console.log("Example 1 (Default 1m): node download_history.js 2025-11-01 150");
+        console.log("Example 2 (Hourly)    : node download_history.js 2025-11-01 150 1h");
+        console.log(`Valid Intervals: ${validIntervals.join(', ')}`);
         return;
     }
 
-    const DATA_DIR = './historical_data';
+    if (!validIntervals.includes(intervalArg)) {
+        console.error(`Invalid interval. Supported intervals: ${validIntervals.join(', ')}`);
+        return;
+    }
+
+    const DATA_DIR = `./historical_data/${intervalArg}`;
     const symbol = 'SOLUSDT';
-    const interval = '1m';
+    const interval = intervalArg;
     const limit = 1000; // Binance max limit per request
 
     const startTime = new Date(startDateStr).getTime();
@@ -36,7 +46,7 @@ async function downloadHistory() {
 
     console.log(`\n========================================================`);
     console.log(`   SOLANA HISTORICAL DATA DOWNLOADER (OHLCV+)`);
-    console.log(`   Symbol: ${symbol} | Interval: ${interval}`);
+    console.log(`   Symbol: ${symbol} | Interval: ${interval} | Output: ${DATA_DIR}`);
     console.log(`   Total Period: ${new Date(startTime).toISOString()} to ${new Date(actualEndTime).toISOString()}`);
     console.log(`========================================================\n`);
 
