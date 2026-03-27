@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { STRATEGIES, TOKENS, SOL_RESERVE } from './sol_usdc_trading_bot.js';
 import { ProfitGuardedStrategy } from './strategies/ProfitGuardedStrategy.js';
 import { VolumeBreakoutStrategy } from './strategies/VolumeBreakoutStrategy.js';
+import { GridScalperStrategy } from './strategies/GridScalperStrategy.js';
 
 dotenv.config();
 
@@ -78,7 +79,8 @@ async function runBacktest() {
     // 3. Define strategies to test
     const strategiesToTest = {
         ...STRATEGIES,
-        'VOLUME_BREAKOUT': VolumeBreakoutStrategy
+        'VOLUME_BREAKOUT': VolumeBreakoutStrategy,
+        'GRID_SCALPER': GridScalperStrategy
     };
 
     const results = [];
@@ -91,7 +93,9 @@ async function runBacktest() {
             VOLUME_MA_PERIOD: 20,
             VOLUME_MULTIPLIER: 3.0,
             BUY_RSI_THRESHOLD: 40,
-            SELL_RSI_THRESHOLD: 60
+            SELL_RSI_THRESHOLD: 60,
+            GRID_BUY_DROP_PCT: 0.8,
+            GRID_SELL_TARGET_PCT: 1.0
         });
 
         // Wrap with Profit Guard (mimic bot behavior)
