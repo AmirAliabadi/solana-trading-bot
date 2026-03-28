@@ -6,18 +6,19 @@ export class GridScalperStrategy {
         // Accept both key names for backwards compatibility
         this.sellTargetPct = (parseFloat(config.GRID_SELL_TARGET_PCT) || parseFloat(config.GRID_PROFIT_TARGET_PCT) || 1.0) / 100;
         this.stopLossPct = (parseFloat(config.GRID_STOP_LOSS_PCT) || 1.5) / 100;
-        
+
         this.lastHigh = null;
     }
 
     calculateIndicators(priceHistory) {
-         // This strategy requires no complex TA! Pure price action.
-         return {};
+        // This strategy requires no complex TA! Pure price action.
+        return {};
     }
 
     checkSignal(indicators, currentPrice, currentAsset, entryPrice = null) {
         let triggered = false;
         let type = null;
+        let reason = null;
 
         if (currentAsset === 'USDC') {
             // Track the local peak while sitting safely in stablecoins
@@ -42,15 +43,17 @@ export class GridScalperStrategy {
                 if (hitProfitTarget || hitStopLoss) {
                     triggered = true;
                     type = 'SELL';
+                    reason = hitStopLoss ? 'STOP_LOSS' : 'PROFIT_TARGET';
                 }
             }
         }
 
         const stopLossLevel = entryPrice ? entryPrice * (1 - this.stopLossPct) : null;
-        return { 
-            triggered, 
-            type, 
-            metrics: { lastHigh: this.lastHigh, entryPrice, stopLossLevel } 
+        return {
+            triggered,
+            type,
+            reason,
+            metrics: { lastHigh: this.lastHigh, entryPrice, stopLossLevel }
         };
     }
 

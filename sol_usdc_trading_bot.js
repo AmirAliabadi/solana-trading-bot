@@ -311,6 +311,16 @@ export class JupiterMonitor {
         const livePrice = parseInt(solPriceQuote.outAmount) / (10 ** TOKENS.USDC.decimals);
         const priceImpact = parseFloat(priceQuote.priceImpactPct) * 100; // Convert to readable percentage
 
+        // If starting fresh with SOL and no known cost basis, anchor entry price to
+        // the current live price. This gives GridScalper (and similar strategies) a
+        // reference point for sell targets and stop-losses from day one.
+        if (state.currentAsset === 'SOL' && state.entryPrice === 0) {
+          state.entryPrice = livePrice;
+          state.updatedAt = new Date().toISOString();
+          await this.saveState(state);
+          logger.info(`[Session] No entry price found. Anchoring cost basis to current price: $${livePrice.toFixed(2)}`);
+        }
+
         let currentPnl = 0;
         let pnlPercentage = 0;
         

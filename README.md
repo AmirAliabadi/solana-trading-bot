@@ -53,11 +53,21 @@ Edit `.env` — the key fields are:
 
 ### 4. Start the Bot
 
+> ⚠️ **Run from inside the `jupiter-bot/` directory**, not the parent folder.
+
 **First run** — pass your starting token and amount:
 
 ```bash
 node sol_usdc_trading_bot.js SOL 60
 ```
+
+If you start with **SOL** and no prior trade history, the bot has no cost basis yet. On the first poll it will automatically anchor the entry price to the current live SOL price and log:
+
+```
+[Session] No entry price found. Anchoring cost basis to current price: $XX.XX
+```
+
+GridScalper will then immediately switch to `🎯 SCALPING TARGET` mode and begin tracking exits from that anchor price.
 
 **Resume** after a restart (reads `trading_state.json` automatically):
 
@@ -87,9 +97,17 @@ Each strategy ships with three config profiles in `strategies/configs/`: `defaul
 **Logic:**
 - **BUY** → Price drops `GRID_BUY_DROP_PCT`% from local high
 - **SELL** → Price rises `GRID_SELL_TARGET_PCT`% above entry price
-- **STOP** → Price drops `GRID_STOP_LOSS_PCT`% below entry price (new — hard floor)
+- **STOP** → Price drops `GRID_STOP_LOSS_PCT`% below entry price (hard floor)
 
 **Why it hits the daily target:** Exits are deterministic, not indicator-based. You engineer the profit per trade. With the `optimal` profile (0.3% dip / 0.35% target), SOL's intraday volatility provides multiple opportunities daily.
+
+**Display modes in the console log:**
+
+| Mode displayed | Meaning |
+|---|---|
+| `📉 HUNTING DIPS` | Holding USDC — tracking local high, waiting for `GRID_BUY_DROP_PCT`% dip |
+| `🎯 SCALPING TARGET \| Target: $X \| Stop: 🛑$X` | Holding SOL — waiting to hit profit target or stop-loss |
+| `INITIALIZING...` | First poll only — bot is anchoring entry price to current live price |
 
 **Config profiles (`strategies/configs/GRID_SCALPER-*.json`):**
 
@@ -246,6 +264,21 @@ PROFIT_THRESHOLD_PERCENT=0.25   # Require at least 0.25% gain before reversing
 
 Set to `0` to disable.
 
+**Stop-Loss Bypass:** Stop-loss exits always pass through the Profit Guard regardless of the profit threshold. A stop-loss is an emergency exit at a loss by design — requiring it to clear a profit threshold would defeat its purpose. Stop-loss exits are logged as `PROFIT: OK ✅` (bypassed).
+
+**Profit Guard decision flow:**
+```
+Signal triggered?
+  └─ No  → no trade
+  └─ Yes → entryPrice set?
+              └─ No  → allow (no history)
+              └─ Yes → STOP_LOSS signal?
+                          └─ Yes → ✅ allow immediately (bypass)
+                          └─ No  → profit threshold met?
+                                      └─ Yes → ✅ PROFIT: OK
+                                      └─ No  → ❌ PROFIT: BLOCK
+```
+
 ---
 
 ## Price Impact Guard
@@ -296,7 +329,7 @@ node backtest.js 5000 USDC 1m
 
 **Backtest parameters:**
 - Slippage: **0.5%** per swap (conservative estimate)
-- Profit guard threshold: reads `PROFIT_THRESHOLD_PERCENT` from `.env` (default `0.2`)
+- Profit guard threshold: reads `PROFIT_THRESHOLD_PERCENT` from `.env` (default `0.25`)
 - Warm-up: skips first 50 candles to allow indicators to stabilize
 
 **Example output:**
@@ -373,3 +406,17 @@ jupiter-bot/
 | Trending market | `TREND_FOLLOWING` | `default` | `1h` |
 | Deep RSI signals | `MEAN_REVERSION` | `default` | `15m` |
 | Volume-driven moves | `VOLUME_BREAKOUT` | `aggressive` | `5m` |
+
+---
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `Cannot find module 'sol_usdc_trading_bot.js'` | Running from the wrong directory | `cd jupiter-bot` then re-run |
+| `Mode: INITIALIZING...` (persists beyond first poll) | `entryPrice = 0` — bug from older version | Delete `trading_state.json` and restart with `SOL <amount>` |
+| `PROFIT: BLOCK 🛑` on every poll when holding SOL | Stop-loss being blocked by profit guard — bug from older version | Ensure you are running the latest code; stop-losses now bypass profit check |
+| `PROFIT: BLOCK 🛑` on normal sells | Price hasn't recovered to entry + threshold yet | Expected behaviour — the guard is working. Wait for the target, or lower `PROFIT_THRESHOLD_PERCENT` |
+| Bot never buys after selling | Profit guard buy check: current price must be ≤ previous sell price - threshold | Price needs to dip enough from the last sell for a re-entry to make sense |
+| `Market data temporarily unavailable` | Binance API rate limit or network blip | Bot retries automatically every `POLL_INTERVAL` |
+| `Trading quotes temporarily unavailable` | Jupiter API timeout | Bot retries automatically; usually resolves within 1–2 polls |
