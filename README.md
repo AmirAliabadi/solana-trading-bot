@@ -15,6 +15,7 @@ A fully automated, modular Spot Trading Bot for the **SOL/USDC** pair on Solana.
 - **Persistent State** — survives restarts; reads `trading_state.json` to resume the exact session
 - **Multi-file Logging** — hourly-rotated console/file logs + dedicated trade CSV for audit trails
 - **Discord Notifications** — startup ping, BUY/SELL alerts with price, PNL, and strategy name
+- **Hourly Heartbeat** — periodic Discord status update with PNL, mode, uptime, and trade count
 - **Backtesting Engine** — replay all strategies against months of OHLCV history in one command
 
 ---
@@ -48,7 +49,8 @@ Edit `.env` — the key fields are:
 | `MAX_PRICE_IMPACT` | Block trades above this on-chain price impact % | `0.1` |
 | `PROFIT_THRESHOLD_PERCENT` | Minimum % gain required before allowing a reverse swap | `0.25` |
 | `POST_SWAP_DELAY_MS` | Pause after a swap before resuming polling | `5000` |
-| `DISCORD_WEBHOOK_URL` | Discord Webhook URL for trade alerts | *(your URL)* |
+| `DISCORD_WEBHOOK_URL` | Discord Webhook URL for trade alerts and heartbeat | *(your URL)* |
+| `HEARTBEAT_INTERVAL_MS` | How often to post a status heartbeat to Discord (ms) | `3600000` (1 hr) |
 | `ENABLE_DATA_LOGGING` | Write live TA data to `data_logs/` CSV for later backtesting | `true` |
 
 ### 4. Start the Bot
@@ -293,6 +295,47 @@ The impact % is read directly from Jupiter's quote response — it reflects your
 
 ---
 
+## Discord Notifications
+
+The bot sends three types of Discord messages via the webhook configured in `DISCORD_WEBHOOK_URL`:
+
+| Event | Colour | When it fires |
+|---|---|---|
+| 🚀 **Bot Initialized** | Blue | Once at startup — shows strategy name and starting portfolio |
+| 📈 / 📉 **Trade Alert** | Green (buy) / Red (sell) | Each time a swap signal is triggered — includes price, PNL, and reason |
+| 💓 **Hourly Heartbeat** | Orange | Every `HEARTBEAT_INTERVAL_MS` milliseconds (default: 1 hour) |
+
+### Heartbeat message
+
+The heartbeat fires automatically on the next poll after the interval expires. It sends a concise snapshot directly to your Discord channel:
+
+```
+💓 Hourly Heartbeat
+
+Strategy: GRID_SCALPER + Profit Guard (0.25%)
+Holding: 60.0000 SOL @ $83.42
+
+Session PNL: +0.12% (+0.0720 SOL)
+Mode: 🎯 SCALPING TARGET | Target: $83.67 | Stop: 🛑$82.75
+
+Session Trades: 2
+Uptime: 3h 15m
+```
+
+**Tune the interval:**
+
+```env
+# Default — one update per hour
+HEARTBEAT_INTERVAL_MS=3600000
+
+# During testing — fire every 5 minutes to verify delivery
+HEARTBEAT_INTERVAL_MS=300000
+```
+
+> The heartbeat counter and trade count reset each time the bot process restarts. Uptime reflects the current process lifetime only.
+
+---
+
 ## Backtesting
 
 ### 1. Download Historical Data
@@ -420,3 +463,5 @@ jupiter-bot/
 | Bot never buys after selling | Profit guard buy check: current price must be ≤ previous sell price - threshold | Price needs to dip enough from the last sell for a re-entry to make sense |
 | `Market data temporarily unavailable` | Binance API rate limit or network blip | Bot retries automatically every `POLL_INTERVAL` |
 | `Trading quotes temporarily unavailable` | Jupiter API timeout | Bot retries automatically; usually resolves within 1–2 polls |
+| No heartbeat received in Discord | Webhook URL missing or incorrect | Check `DISCORD_WEBHOOK_URL` in `.env` starts with `https://discord.com/api/webhooks/` |
+| Heartbeat fires too rarely / too often | `HEARTBEAT_INTERVAL_MS` set to wrong value | Adjust in `.env`; `3600000` = 1 hour, `300000` = 5 min |
