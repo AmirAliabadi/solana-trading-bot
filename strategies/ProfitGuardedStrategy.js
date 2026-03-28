@@ -14,7 +14,7 @@ export class ProfitGuardedStrategy {
   }
 
   checkSignal(indicators, livePrice, currentAsset, entryPrice) {
-    const signal = this.baseStrategy.checkSignal(indicators, livePrice, currentAsset);
+    const signal = this.baseStrategy.checkSignal(indicators, livePrice, currentAsset, entryPrice);
     
     // If the base strategy doesn't want to trade, we don't either
     if (!signal.triggered) return signal;
