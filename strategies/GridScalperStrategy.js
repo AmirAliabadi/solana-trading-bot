@@ -3,7 +3,9 @@ export class GridScalperStrategy {
         this.name = "GRID_SCALPER";
         // Convert config values like 0.8 to absolute decimals like 0.008
         this.buyDropPct = (parseFloat(config.GRID_BUY_DROP_PCT) || 0.8) / 100;
-        this.sellTargetPct = (parseFloat(config.GRID_SELL_TARGET_PCT) || 1.0) / 100;
+        // Accept both key names for backwards compatibility
+        this.sellTargetPct = (parseFloat(config.GRID_SELL_TARGET_PCT) || parseFloat(config.GRID_PROFIT_TARGET_PCT) || 1.0) / 100;
+        this.stopLossPct = (parseFloat(config.GRID_STOP_LOSS_PCT) || 1.5) / 100;
         
         this.lastHigh = null;
     }
@@ -32,17 +34,23 @@ export class GridScalperStrategy {
             // We are holding SOL. We don't care about indicators, we only care about hitting our exact target ROI.
             this.lastHigh = null; // Reset the peak tracker for the next cycle
 
-            // SELL trigger: Price hits our hard profit target relative to when we bought
-            if (entryPrice && currentPrice >= entryPrice * (1 + this.sellTargetPct)) {
-                triggered = true;
-                type = 'SELL';
+            if (entryPrice) {
+                const hitProfitTarget = currentPrice >= entryPrice * (1 + this.sellTargetPct);
+                const hitStopLoss = currentPrice <= entryPrice * (1 - this.stopLossPct);
+
+                // SELL trigger: Price hits profit target OR stop-loss
+                if (hitProfitTarget || hitStopLoss) {
+                    triggered = true;
+                    type = 'SELL';
+                }
             }
         }
 
+        const stopLossLevel = entryPrice ? entryPrice * (1 - this.stopLossPct) : null;
         return { 
             triggered, 
             type, 
-            metrics: { lastHigh: this.lastHigh, entryPrice } 
+            metrics: { lastHigh: this.lastHigh, entryPrice, stopLossLevel } 
         };
     }
 
@@ -55,9 +63,10 @@ export class GridScalperStrategy {
             ];
         } else if (metrics.entryPrice) {
             const sellTarget = (metrics.entryPrice * (1 + this.sellTargetPct)).toFixed(2);
+            const stopLevel = (metrics.entryPrice * (1 - this.stopLossPct)).toFixed(2);
             return [
                 `Mode: 🎯 SCALPING TARGET`,
-                `Sell Target Level: $${sellTarget}`
+                `Target: $${sellTarget} | Stop: 🛑$${stopLevel}`
             ];
         }
         return ['Mode: INITIALIZING...'];

@@ -1,153 +1,375 @@
-# Solana Auto-Compounding TA Trading Bot (Virtual)
+# SOL/USDC Trading Bot (Jupiter)
 
-This is a fully automated Crypto Spot Trading Bot designed specifically for the **SOL/USDC** pair using the Jupiter `v6` Swap API. It watches the market on a configurable timeframe (e.g., `1m`, `15m`, `1h`) using data directly from Binance and mathematically determines optimal trade entries using purely quantitative Technical Analysis.
+A fully automated, modular Spot Trading Bot for the **SOL/USDC** pair on Solana. It fetches live market data from Binance, computes Technical Analysis indicators, and signals optimal trade entries/exits via the [Jupiter](https://jup.ag) Swap API. Trade signals are sent to **Discord** in real-time.
 
-Currently, the bot is operating as a **Virtual Simulation**. It accurately queries the blockchain for live quotes and strictly tracks PNL and gas fees, but does *not* sign live transactions with your private key. 
-
-### Core Features
-- **Mean-Reversion Strategy:** Buys exact bottoms and sells exact tops using Extreme RSI Divergences (Overbought/Oversold).
-- **Trend Confirmation Filters:** Protects from "falling knives" by requiring MACD Reversal alignment and Volume Weighted Average Price (VWAP) breakouts.
-- **Auto-Compounding:** Re-invests 100% of profit back into the active trading stack natively.
-- **Persistent State Tracking:** Constantly writes your current real-time portfolio balance to a local `json` database so you can seamlessly shut down the bot and resume exactly where you left off.
-- **Hourly Native Logs**: Spits out clean, professional metrics directly to the console and archives everything cleanly in rotated background files.
-- **Discord Alerts**: Sends high-fidelity notifications for bot startup and real-time BUY/SELL recommendations directly to your server.
+> **Status:** Virtual Simulation mode. The bot tracks live Jupiter quotes and PNL with full precision but does **not** sign or submit transactions. You execute the swap manually when the alarm fires.
 
 ---
 
-## 📈 Technical Analysis Strategy
+## Features
 
-The bot's core logic is now **Modular**. You can swap between different trading algorithms without touching the main engine.
-
-### **Available Strategies:**
-1.  **`MEAN_REVERSION` (Default):** Uses RSI, MACD, and VWAP to find overextended price points (Buys low, Sells high).
-2.  **`TREND_FOLLOWING`:** Uses EMA Crossovers (9/21) and RSI momentum to capture breakout trends.
-3.  **`BOLLINGER_BANDS`**: Uses volatility bands (20, 2) to identify price extremes.
-4.  **`SIMPLE_TREND`**: A momentum-based approach that triggers on fixed percentage moves (e.g., 3% rise to buy).
-5.  **`VOLUME_BREAKOUT`**: Institutional-grade breakout hunter that triggers when price increases on massive 1m volume spikes (3x+ average).
-6.  **`ALWAYS_BUY` (Testing)**: A test strategy that triggers a buy signal on every poll.
-
-### **How to Switch Strategies:**
-Simply update your `.env` file:
-```env
-ACTIVE_STRATEGY=ALWAYS_BUY
-```
-The bot utilizes a strict, multi-layered filter of three institutional-grade indicators to execute exact Mean-Reversion trades. You can easily adjust the "aggressiveness" of the bot in your `.env` file by changing the RSI thresholds:
-
-1. **RSI (Relative Strength Index) - The Trigger**
-   - **Buy Signal:** RSI drops below `BUY_RSI_THRESHOLD` (Default: **40**).
-   - **Sell Signal:** RSI rallies above `SELL_RSI_THRESHOLD` (Default: **60**).
-   - *Strategy:* A higher BUY threshold (e.g., 40 instead of 30) and a lower SELL threshold (e.g., 60 instead of 70) will lead to much higher trade frequency.
-
-4. **Simple Trend Thresholds (Percentage Distance)**
-   - **Buy Signal:** Price rises by `SIMPLE_TREND_BUY_PCT` (Default: **3.0%**) from the local bottom.
-   - **Sell Signal:** Price drops by `SIMPLE_TREND_SELL_PCT` (Default: **4.0%**) from the local peak.
-   - *Logic:* This strategy ignores complex TA indicators and relies purely on price momentum and "bounce" strength.
-
-5. **Volume Breakout (Momentum Hunter)**
-   - **Buy Signal:** Price increases AND Volume is > `VOLUME_MULTIPLIER` (Default: **3.0x**) of the `VOLUME_MA_PERIOD`.
-   - **Sell Signal:** A simple 3% Trailing Stop or RSI > 70.
-   - *Logic:* This strategy waits for high-conviction "Institutional" moves where price jumps coincide with massive volume spikes.
-
-5. **Price Impact Guard (Liquidity Filter)**
-   - **Threshold:** `MAX_PRICE_IMPACT` (Default: **0.1%**).
-   - **Purpose:** Even if all TA signals are green, the bot will block the trade if market liquidity is too thin to support your order size without significant slippage.
-
-2. **MACD (Moving Average Convergence Divergence) - The Momentum Filter**
-   - **Buy Signal:** MACD Histogram flips Positive (`> 0`).
-   - **Sell Signal:** MACD Histogram flips Negative (`< 0`).
-   - **Config:** You can disable this by setting `USE_MACD=false` or change the periods (`12, 26, 9`) via environment variables.
-   - *Purpose:* Prevents buying while an asset is still actively crashing. It forces the bot to wait until the exact moment the immediate downward momentum starts curving upwards.
-
-3. **VWAP (Volume Weighted Average Price) - The Macro Filter**
-   - **Buy Signal:** Live Price breaks *Above* the VWAP (Adjustable via `VWAP_OFFSET_PERCENT`).
-   - **Sell Signal:** Live Price breaks *Below* the VWAP (Adjustable via `VWAP_OFFSET_PERCENT`).
-   - **Config:** You can disable this entirely by setting `USE_VWAP=false`.
-   - *Strategy:* Adding an offset (e.g., 0.1%) allows the bot to trigger a trade slightly *before* the price physically crosses the VWAP line, which is useful in high-momentum breakouts.
-
-*Note: The bot requires ALL THREE conditions to align simultaneously before it will trigger an alarm and flip its active portfolio state.*
+- **7 Pluggable Strategies** — swap between algorithms via a single `.env` line, no code changes required
+- **Profit Guard Layer** — wraps any strategy and blocks round-trips that don't clear a minimum profit threshold
+- **Stop-Loss on GridScalper** — hard floor exit to cap downside per trade
+- **Price Impact Guard** — blocks trades when on-chain liquidity is too thin (configurable %)
+- **Persistent State** — survives restarts; reads `trading_state.json` to resume the exact session
+- **Multi-file Logging** — hourly-rotated console/file logs + dedicated trade CSV for audit trails
+- **Discord Notifications** — startup ping, BUY/SELL alerts with price, PNL, and strategy name
+- **Backtesting Engine** — replay all strategies against months of OHLCV history in one command
 
 ---
 
-## 🚀 How to Run in a Clean Environment
+## Quick Start
 
 ### 1. Prerequisites
-Ensure you have [Node.js](https://nodejs.org/) installed on your machine (v18 or higher recommended).
 
-### 2. Clone the Repository
-Pull the code down to your local machine:
-```bash
-git clone https://github.com/AmirAliabadi/solana-trading-bot.git
-cd solana-trading-bot
-```
+- [Node.js](https://nodejs.org/) v18 or higher
 
-### 3. Install Dependencies
-Install all the required trading libraries (`technicalindicators`, `dotenv`, `winston`, `@solana/web3.js`, etc.):
+### 2. Install Dependencies
+
 ```bash
 npm install
 ```
 
-### 4. Configure Your Environment Variables
-The bot requires a `.env` file to function properly. 
-1. Copy the provided example file: 
+### 3. Configure Environment
+
 ```bash
 cp .env.example .env
 ```
-2. Open the newly created `.env` file in your editor and optionally fill in your Private Key (if live trading is enabled) and custom `POLL_INTERVAL` configuration.
-3. **Set Timeframe**: Define your target chart resolution by changing `BINANCE_INTERVAL` (Options: `1m`, `5m`, `15m`, `1h`). Higher timeframes act as a powerful filter against intraday noise.
-4. **Discord Setup**: Paste your Discord Webhook URL into `DISCORD_WEBHOOK_URL` to receive real-time alerts.
 
+Edit `.env` — the key fields are:
 
-### 5. Start the Trading Bot
-To initialize the very first session, you must tell the script what token you are starting with, and how much of it you virtually hold. 
+| Variable | Description | Default |
+|---|---|---|
+| `ACTIVE_STRATEGY` | Strategy to run (see list below) | `GRID_SCALPER` |
+| `ACTIVE_STRATEGY_CONFIG` | Config profile filename inside `strategies/configs/` | `GRID_SCALPER-optimal.json` |
+| `BINANCE_INTERVAL` | Candle resolution for TA (`1m`, `5m`, `15m`, `1h`, …) | `5m` |
+| `POLL_INTERVAL` | How often the bot polls, in milliseconds | `30000` |
+| `MAX_PRICE_IMPACT` | Block trades above this on-chain price impact % | `0.1` |
+| `PROFIT_THRESHOLD_PERCENT` | Minimum % gain required before allowing a reverse swap | `0.25` |
+| `POST_SWAP_DELAY_MS` | Pause after a swap before resuming polling | `5000` |
+| `DISCORD_WEBHOOK_URL` | Discord Webhook URL for trade alerts | *(your URL)* |
+| `ENABLE_DATA_LOGGING` | Write live TA data to `data_logs/` CSV for later backtesting | `true` |
 
-For example, if you want to simulated trade starting with 60 SOL:
+### 4. Start the Bot
+
+**First run** — pass your starting token and amount:
+
 ```bash
 node sol_usdc_trading_bot.js SOL 60
 ```
 
-If you ever want to gracefully stop the bot (using `CTRL+C`) and start it back up later, you don't need to feed it any arguments. Just run:
+**Resume** after a restart (reads `trading_state.json` automatically):
+
 ```bash
 node sol_usdc_trading_bot.js
 ```
-The bot will automatically read the local `trading_state.json` file it created, recover your exact portfolio balances, calculate your PNL, and seamlessly pick up right where it left off!
 
 ---
 
----
+## Strategies
 
-## 🛡️ Profit Guard Security Layer
-To protect your balance from "wash trades" (where a signal triggers but the price hasn't moved enough to cover slippage), the bot includes a mandatory **Profit Guard**.
+The bot's strategy system is fully modular. Select a strategy in `.env` and optionally point to a config profile:
 
-- **How it works:** Every time the bot completes a swap, it records the exact **Execution Price**. It will then **block** any automated reversal signals unless the current price guarantees at least a net profit (after slippage).
-- **Configuration:** Update `PROFIT_THRESHOLD_PERCENT=0.2` (Default: **0.2%**) in your `.env`.
-
----
-
-## 🧪 Backtesting & Historical Analysis
-
-The bot includes a standalone high-fidelity backtesting engine (`backtest.js`) that allows you to simulate all strategies against your actual recorded history.
-
-### **1. Download High-Res History**
-The bot includes a script to fetch professional market data directly from Binance:
-```bash
-node download_history.js 2026-01-01 31
+```env
+ACTIVE_STRATEGY=GRID_SCALPER
+ACTIVE_STRATEGY_CONFIG=GRID_SCALPER-optimal.json
 ```
-*This fetches 31 days of 1-minute data starting from Jan 1st into `historical_data/`.*
 
-### **2. Run a Deep Simulation**
-The engine automatically aggregates all historical files, sorts them chronologically, and applies a **1% safety slippage cap** for high-fidelity results:
-```bash
-node backtest.js 60 SOL
+Each strategy ships with three config profiles in `strategies/configs/`: `default`, `conservative`, and `aggressive`.
+
+---
+
+### 1. `GRID_SCALPER` ⭐ Recommended for 0.025%/day target
+
+**Philosophy:** Track the local price high while holding USDC. Buy when price dips a set percentage from that high. Sell mechanically when a fixed profit target is hit — or cut losses at the stop-loss.
+
+**Logic:**
+- **BUY** → Price drops `GRID_BUY_DROP_PCT`% from local high
+- **SELL** → Price rises `GRID_SELL_TARGET_PCT`% above entry price
+- **STOP** → Price drops `GRID_STOP_LOSS_PCT`% below entry price (new — hard floor)
+
+**Why it hits the daily target:** Exits are deterministic, not indicator-based. You engineer the profit per trade. With the `optimal` profile (0.3% dip / 0.35% target), SOL's intraday volatility provides multiple opportunities daily.
+
+**Config profiles (`strategies/configs/GRID_SCALPER-*.json`):**
+
+| Profile | Buy Drop | Sell Target | Stop Loss | Use Case |
+|---|---|---|---|---|
+| `optimal` | 0.3% | 0.35% | 0.75% | **0.025%/day target** |
+| `default` | 1.0% | 1.0% | 1.5% | Moderate swings |
+| `conservative` | 2.0% | 0.5% | 3.0% | Deep dip hunter |
+| `aggressive` | 0.5% | 2.0% | 1.0% | Ride large moves |
+
+**Config keys:**
+
+```json
+{
+  "GRID_BUY_DROP_PCT": 0.3,
+  "GRID_SELL_TARGET_PCT": 0.35,
+  "GRID_STOP_LOSS_PCT": 0.75
+}
 ```
-*This simulates all registered strategies across your entire multi-month historical archive.*
 
-### **3. Captured Fields (OHLCV+)**
-- `timestamp`: ISO 8601 UTC time.
-- `open/high/low/close`: Full candle price data.
-- `volume`: Total trading volume for the minute.
-- `trades`: Number of individual trades in the minute.
-- `quoteVolume`: Total USDC value traded.
-- `impact_pct`: Current market slippage/impact.
+---
 
-### **4. Cooldown Settings**
-- `POST_SWAP_DELAY_MS=5000`: How long the bot pauses after a success before resuming the monitor.
+### 2. `MEAN_REVERSION`
+
+**Philosophy:** SOL oscillates between extremes. Buy when it's oversold, sell when it's overbought.
+
+**Logic:**
+- **BUY** → RSI < `BUY_RSI_THRESHOLD` AND (optionally) MACD histogram > 0 AND price ≥ VWAP
+- **SELL** → RSI > `SELL_RSI_THRESHOLD` AND (optionally) MACD histogram < 0 AND price ≤ VWAP
+
+**Config keys:**
+
+```json
+{
+  "BUY_RSI_THRESHOLD": 40,
+  "SELL_RSI_THRESHOLD": 60,
+  "USE_MACD": true,
+  "MACD_FAST_PERIOD": 12,
+  "MACD_SLOW_PERIOD": 26,
+  "MACD_SIGNAL_PERIOD": 9,
+  "USE_VWAP": false,
+  "VWAP_OFFSET_PERCENT": 0.0
+}
+```
+
+> **Note:** Setting `USE_MACD: true` significantly reduces false signals in trending markets. `USE_VWAP: false` is recommended on timeframes shorter than 1h where the rolling VWAP loses daily-session meaning.
+
+---
+
+### 3. `BOLLINGER_BANDS`
+
+**Philosophy:** Use statistical volatility bands as natural support/resistance levels.
+
+**Logic:**
+- **BUY** → Price touches or breaks below Lower Band AND RSI < 45
+- **SELL** → Price touches or breaks above Upper Band AND RSI > 55
+
+**Config keys:**
+
+```json
+{
+  "BB_PERIOD": 20,
+  "BB_STDDEV": 2
+}
+```
+
+Best suited to **ranging/choppy** SOL markets. In strong trends, price can "walk the band" — combine with a directional bias filter if needed.
+
+---
+
+### 4. `TREND_FOLLOWING`
+
+**Philosophy:** Capture breakouts by riding EMA crossovers with RSI momentum confirmation.
+
+**Logic:**
+- **BUY** → EMA(fast) crosses above EMA(slow) AND RSI > 50
+- **SELL** → EMA(fast) crosses below EMA(slow) AND RSI < 50
+
+**Config keys:**
+
+```json
+{
+  "EMA_FAST": 9,
+  "EMA_SLOW": 21
+}
+```
+
+> ⚠️ EMA crossovers are lagging. This strategy underperforms in choppy/sideways conditions and can suffer whipsaws. Best used on the `1h` timeframe or above.
+
+---
+
+### 5. `SIMPLE_TREND`
+
+**Philosophy:** Pure price momentum. Buy after a confirmed bounce off a bottom; sell after a pullback from a peak.
+
+**Logic:**
+- **BUY** → Price rises `SIMPLE_BUY_PCT`% from the tracked local low
+- **SELL** → Price drops `SIMPLE_SELL_PCT`% from the tracked local high
+
+**Config keys:**
+
+```json
+{
+  "SIMPLE_BUY_PCT": 3.0,
+  "SIMPLE_SELL_PCT": 4.0
+}
+```
+
+> The default thresholds (3% / 4%) require large moves, giving very low trade frequency. At $84 SOL this means ~$5–6 swings. Best used as a **macro/swing** strategy over longer periods.
+
+---
+
+### 6. `VOLUME_BREAKOUT`
+
+**Philosophy:** Wait for institutional-grade volume spikes that signal conviction breakouts.
+
+**Logic:**
+- **BUY** → Current volume > `VOLUME_MULTIPLIER` × 20-period volume SMA AND price is increasing AND RSI < `BUY_RSI`
+- **SELL** → Price drops 3% from peak (trailing stop) OR RSI > `SELL_RSI`
+
+**Config keys:**
+
+```json
+{
+  "VOLUME_MA_PERIOD": 20,
+  "VOLUME_MULTIPLIER": 3.0,
+  "STOP_LOSS_PCT": 3.0,
+  "SELL_RSI_THRESHOLD": 70
+}
+```
+
+> Best on `1m` or `5m` candles. On `15m`+ timeframes, 3x volume spikes become very rare. Lower `VOLUME_MULTIPLIER` to ~1.5 for higher signal frequency.
+
+---
+
+### 7. `ALWAYS_BUY` (Testing Only)
+
+Immediately triggers BUY or SELL on every poll cycle. Used solely to verify the modular strategy architecture and Profit Guard wrapper are working. **Do not use for live trading.**
+
+---
+
+## Profit Guard (Wraps All Strategies)
+
+Every strategy is automatically wrapped by a **Profit Guard** layer when `PROFIT_THRESHOLD_PERCENT > 0`.
+
+**How it works:**
+1. After each swap, the bot saves the exact execution price to `trading_state.json`
+2. Before any reverse swap fires, the Profit Guard checks whether the current price guarantees at least `PROFIT_THRESHOLD_PERCENT` net gain
+3. If not, it **blocks** the signal and logs `PROFIT: BLOCK 🛑`
+
+```env
+PROFIT_THRESHOLD_PERCENT=0.25   # Require at least 0.25% gain before reversing
+```
+
+Set to `0` to disable.
+
+---
+
+## Price Impact Guard
+
+Even if all TA signals are green, the bot will block a trade if it detects thin on-chain liquidity.
+
+```env
+MAX_PRICE_IMPACT=0.1   # Block any swap that would cause >0.1% price impact
+```
+
+The impact % is read directly from Jupiter's quote response — it reflects your actual order's market depth in real time.
+
+---
+
+## Backtesting
+
+### 1. Download Historical Data
+
+Fetch OHLCV data from Binance and save it month-by-month to `historical_data/<interval>/`:
+
+```bash
+# 150 days of 1-minute data starting Nov 1 2025
+node download_history.js 2025-11-01 150 1m
+
+# 150 days of 1-hour data (faster, recommended for first run)
+node download_history.js 2025-11-01 150 1h
+```
+
+**Valid intervals:** `1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `6h`, `8h`, `12h`, `1d`, `1w`
+
+Output files are saved as `historical_data/<interval>/historical-YYYY-MM.csv` with columns:
+
+```
+timestamp, open, high, low, close, volume, quoteVolume, trades, takerBaseVolume, takerQuoteVolume
+```
+
+### 2. Run the Backtest Engine
+
+The engine tests **all strategies × all config profiles simultaneously** and prints a ranked results table:
+
+```bash
+# Start with 60 SOL, use 1h data
+node backtest.js 60 SOL 1h
+
+# Start with 5000 USDC, use 1m data
+node backtest.js 5000 USDC 1m
+```
+
+**Backtest parameters:**
+- Slippage: **0.5%** per swap (conservative estimate)
+- Profit guard threshold: reads `PROFIT_THRESHOLD_PERCENT` from `.env` (default `0.2`)
+- Warm-up: skips first 50 candles to allow indicators to stabilize
+
+**Example output:**
+```
+Strategy                           :    PNL% | Trades
+GRID_SCALPER-optimal               :  +12.45% |    47
+BOLLINGER_BANDS-conservative       :   +8.11% |    22
+MEAN_REVERSION-default             :   +5.33% |    14
+...
+```
+
+---
+
+## Logging
+
+| Log Type | Location | Rotation | Contents |
+|---|---|---|---|
+| Console + file | `logs/trading-bot-YYYY-MM-DD-HH.log` | Hourly | Full poll output, signals, errors |
+| Trade history | `logs/trades-YYYY-MM-DD.csv` | Daily | `timestamp, type, inputAmt, inputToken, outputAmt, outputToken, price` |
+| TA data feed | `data_logs/market-feed-YYYY-MM-DD-HH.csv` | Hourly | `timestamp, price, rsi, macd_h, vwap, impact_pct` (if `ENABLE_DATA_LOGGING=true`) |
+
+---
+
+## Project Structure
+
+```
+jupiter-bot/
+├── sol_usdc_trading_bot.js     # Main bot engine + polling loop
+├── backtest.js                 # Standalone backtesting engine
+├── download_history.js         # Binance OHLCV historical data fetcher
+├── trading_state.json          # Live session state (auto-managed)
+├── .env                        # Your local config (not committed)
+├── .env.example                # Config template
+│
+├── strategies/
+│   ├── GridScalperStrategy.js      # Dip-buy + profit target + stop-loss
+│   ├── MeanReversionStrategy.js    # RSI + MACD + VWAP
+│   ├── BollingerBandStrategy.js    # BB bands + RSI
+│   ├── TrendFollowingStrategy.js   # EMA crossover + RSI
+│   ├── SimpleTrendStrategy.js      # % bounce / % pullback
+│   ├── VolumeBreakoutStrategy.js   # Volume spike + trailing stop
+│   ├── ProfitGuardedStrategy.js    # Decorator: wraps any strategy
+│   ├── AlwaysBuyStrategy.js        # Test harness only
+│   └── configs/
+│       ├── GRID_SCALPER-optimal.json       ← tuned for 0.025%/day
+│       ├── GRID_SCALPER-default.json
+│       ├── GRID_SCALPER-conservative.json
+│       ├── GRID_SCALPER-aggressive.json
+│       ├── MEAN_REVERSION-default.json
+│       ├── MEAN_REVERSION-conservative.json
+│       ├── MEAN_REVERSION-aggressive.json
+│       └── ...
+│
+├── utils/
+│   └── notify.js               # Discord webhook helper
+│
+├── logs/                       # Hourly rotated bot logs + trade CSV
+├── data_logs/                  # Hourly live TA feed CSVs
+└── historical_data/
+    ├── 1m/                     # 1-minute OHLCV monthly files
+    ├── 5m/                     # 5-minute OHLCV monthly files
+    └── 1h/                     # 1-hour OHLCV monthly files
+```
+
+---
+
+## Strategy Selection Guide
+
+| Goal | Recommended Strategy | Config Profile | Timeframe |
+|---|---|---|---|
+| **0.025%/day** (primary target) | `GRID_SCALPER` | `optimal` | `5m` |
+| Capture large swings | `GRID_SCALPER` | `aggressive` | `15m` |
+| Ranging market | `BOLLINGER_BANDS` | `conservative` | `15m` |
+| Trending market | `TREND_FOLLOWING` | `default` | `1h` |
+| Deep RSI signals | `MEAN_REVERSION` | `default` | `15m` |
+| Volume-driven moves | `VOLUME_BREAKOUT` | `aggressive` | `5m` |

@@ -3,14 +3,14 @@ import { RSI, MACD, VWAP } from 'technicalindicators';
 export class MeanReversionStrategy {
   constructor(config = {}) {
     this.name = "Mean Reversion (RSI + MACD + VWAP)";
-    this.buyRsi = config.BUY_RSI || 40;
-    this.sellRsi = config.SELL_RSI || 60;
+    this.buyRsi = config.BUY_RSI_THRESHOLD || config.BUY_RSI || 40;
+    this.sellRsi = config.SELL_RSI_THRESHOLD || config.SELL_RSI || 60;
     this.useMacd = config.USE_MACD !== false;
     this.useVwap = config.USE_VWAP !== false;
-    this.vwapOffset = config.VWAP_OFFSET || 0;
-    this.macdFast = config.MACD_FAST || 12;
-    this.macdSlow = config.MACD_SLOW || 26;
-    this.macdSignal = config.MACD_SIGNAL || 9;
+    this.vwapOffset = config.VWAP_OFFSET_PERCENT || config.VWAP_OFFSET || 0;
+    this.macdFast = config.MACD_FAST_PERIOD || config.MACD_FAST || 12;
+    this.macdSlow = config.MACD_SLOW_PERIOD || config.MACD_SLOW || 26;
+    this.macdSignal = config.MACD_SIGNAL_PERIOD || config.MACD_SIGNAL || 9;
   }
 
   getRequiredIndicators() {

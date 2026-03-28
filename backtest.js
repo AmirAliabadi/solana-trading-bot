@@ -120,7 +120,7 @@ async function runBacktest() {
             const strategy = new StrategyClass(strategyConfig);
 
         // Wrap with Profit Guard (mimic bot behavior)
-        const profitGuardThreshold = parseFloat(process.env.PROFIT_THRESHOLD_PERCENT) || 0.002; 
+        const profitGuardThreshold = parseFloat(process.env.PROFIT_THRESHOLD_PERCENT) || 0.2; 
         const profitGuardedStrategy = new ProfitGuardedStrategy(strategy, profitGuardThreshold);
 
         let currentAsset = initialAsset;
