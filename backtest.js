@@ -1,5 +1,7 @@
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
+import url from 'url';
 import dotenv from 'dotenv';
 import { STRATEGIES, TOKENS, SOL_RESERVE } from './sol_usdc_trading_bot.js';
 import { ProfitGuardedStrategy } from './strategies/ProfitGuardedStrategy.js';
@@ -89,19 +91,33 @@ async function runBacktest() {
     };
 
     const results = [];
+    const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
-    for (const [name, StrategyClass] of Object.entries(strategiesToTest)) {
-        // Instantiate strategy with typical config
-        const strategy = new StrategyClass({
-            SIMPLE_BUY_PCT: 3.0,
-            SIMPLE_SELL_PCT: 4.0,
-            VOLUME_MA_PERIOD: 20,
-            VOLUME_MULTIPLIER: 3.0,
-            BUY_RSI_THRESHOLD: 40,
-            SELL_RSI_THRESHOLD: 60,
-            GRID_BUY_DROP_PCT: 0.8,
-            GRID_SELL_TARGET_PCT: 1.0
-        });
+    for (const [baseName, StrategyClass] of Object.entries(strategiesToTest)) {
+        const profiles = ['default', 'conservative', 'aggressive'];
+        
+        for (const profile of profiles) {
+            const name = `${baseName}-${profile}`;
+            
+            // Skip ALWAYS_BUY default profile variants since it takes no parameters
+            if (baseName === 'ALWAYS_BUY' && profile !== 'default') continue;
+
+            let strategyConfig = {};
+            let configFound = false;
+            
+            try {
+                const configPath = path.join(__dirname, 'strategies', 'configs', `${name}.json`);
+                if (fsSync.existsSync(configPath)) {
+                    const rawData = fsSync.readFileSync(configPath, 'utf8');
+                    strategyConfig = JSON.parse(rawData);
+                    configFound = true;
+                }
+            } catch(e) {}
+            
+            // If it's not ALWAYS_BUY and the config wasn't found, skip to avoid duplicate generic tests
+            if (baseName !== 'ALWAYS_BUY' && !configFound && profile !== 'default') continue;
+            
+            const strategy = new StrategyClass(strategyConfig);
 
         // Wrap with Profit Guard (mimic bot behavior)
         const profitGuardThreshold = parseFloat(process.env.PROFIT_THRESHOLD_PERCENT) || 0.002; 
@@ -189,7 +205,8 @@ async function runBacktest() {
             finalSol: finalValueSOL.toFixed(2)
         });
 
-        console.log(`- ${name.padEnd(20)}: ${pnlPerc.toFixed(2).padStart(6)}% | Trades: ${tradeCount}`);
+        console.log(`- ${name.padEnd(35)}: ${pnlPerc.toFixed(2).padStart(6)}% | Trades: ${tradeCount}`);
+        }
     }
 
     console.log(`\n========================================================`);

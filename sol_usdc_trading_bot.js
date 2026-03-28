@@ -1,7 +1,9 @@
 import url from 'url';
 import fs from 'fs/promises';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
+import path from 'path';
 import { RSI, MACD, VWAP } from 'technicalindicators';
+
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import dotenv from 'dotenv';
@@ -97,21 +99,9 @@ export const SOL_RESERVE = 0.05;      // Amount of SOL to always leave untouched
 const POST_SWAP_DELAY = parseInt(process.env.POST_SWAP_DELAY_MS) || 5000; 
 
 // Strategy Configuration
-const BUY_RSI = parseInt(process.env.BUY_RSI_THRESHOLD) || 40;
-const SELL_RSI = parseInt(process.env.SELL_RSI_THRESHOLD) || 60;
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+
 const MAX_PRICE_IMPACT = parseFloat(process.env.MAX_PRICE_IMPACT) || 0.1;
-const USE_VWAP = process.env.USE_VWAP !== 'false'; // Default to true
-const VWAP_OFFSET = parseFloat(process.env.VWAP_OFFSET_PERCENT) || 0;
-
-const USE_MACD = process.env.USE_MACD !== 'false'; // Default to true
-const MACD_FAST = parseInt(process.env.MACD_FAST_PERIOD) || 12;
-const MACD_SLOW = parseInt(process.env.MACD_SLOW_PERIOD) || 26;
-const MACD_SIGNAL = parseInt(process.env.MACD_SIGNAL_PERIOD) || 9;
-
-// Simple Trend Configuration
-const SIMPLE_BUY_PCT = parseFloat(process.env.SIMPLE_TREND_BUY_PCT) || 3.0;
-const SIMPLE_SELL_PCT = parseFloat(process.env.SIMPLE_TREND_SELL_PCT) || 4.0;
-
 const ENABLE_DATA_LOGGING = process.env.ENABLE_DATA_LOGGING === 'true';
 const PROFIT_THRESHOLD = parseFloat(process.env.PROFIT_THRESHOLD_PERCENT) || 0;
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
@@ -127,20 +117,24 @@ export const STRATEGIES = {
 };
 
 const ACTIVE_STRATEGY_NAME = process.env.ACTIVE_STRATEGY || 'MEAN_REVERSION';
+const configFilename = process.env.ACTIVE_STRATEGY_CONFIG || `${ACTIVE_STRATEGY_NAME}-default.json`;
+
+let strategyConfig = {};
+try {
+  const configPath = path.join(__dirname, 'strategies', 'configs', configFilename);
+  if (existsSync(configPath)) {
+    const rawData = readFileSync(configPath, 'utf8');
+    strategyConfig = JSON.parse(rawData);
+    logger.info(`Loaded strategy configuration from ${configFilename}`);
+  } else {
+    logger.warn(`Config file ${configFilename} not found. using core defaults.`);
+  }
+} catch (err) {
+  logger.error(`Error reading strategy config: ${err.message}`);
+}
+
 const StrategyClass = STRATEGIES[ACTIVE_STRATEGY_NAME] || MeanReversionStrategy;
-const baseStrategy = new StrategyClass({
-  BUY_RSI,
-  SELL_RSI,
-  MAX_PRICE_IMPACT,
-  USE_VWAP,
-  VWAP_OFFSET,
-  USE_MACD,
-  MACD_FAST,
-  MACD_SLOW,
-  MACD_SIGNAL,
-  SIMPLE_BUY_PCT,
-  SIMPLE_SELL_PCT
-});
+const baseStrategy = new StrategyClass(strategyConfig);
 
 // Wrap with Profit Guard if threshold is set
 const activeStrategy = PROFIT_THRESHOLD > 0 
