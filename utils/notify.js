@@ -1,4 +1,4 @@
-export async function sendDiscordNotification(url, message, color = 0x00FF00) {
+export async function sendDiscordNotification(url, message, color = 0x00FF00, title = '🚀 SOL/USDC Trading Bot Alert') {
   if (!url || !url.startsWith('https://discord.com/api/webhooks/')) {
     return;
   }
@@ -6,7 +6,7 @@ export async function sendDiscordNotification(url, message, color = 0x00FF00) {
   const payload = {
     embeds: [
       {
-        title: "🚀 SOL/USDC Trading Bot Alert",
+        title: title,
         description: message,
         color: color,
         timestamp: new Date().toISOString(),

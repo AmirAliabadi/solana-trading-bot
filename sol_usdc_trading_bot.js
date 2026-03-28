@@ -105,6 +105,7 @@ const MAX_PRICE_IMPACT = parseFloat(process.env.MAX_PRICE_IMPACT) || 0.1;
 const ENABLE_DATA_LOGGING = process.env.ENABLE_DATA_LOGGING === 'true';
 const PROFIT_THRESHOLD = parseFloat(process.env.PROFIT_THRESHOLD_PERCENT) || 0;
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
+const HEARTBEAT_INTERVAL_MS = parseInt(process.env.HEARTBEAT_INTERVAL_MS) || 3600000; // Default: 1 hour
 
 export const STRATEGIES = {
   MEAN_REVERSION: MeanReversionStrategy,
@@ -256,6 +257,11 @@ export class JupiterMonitor {
     let currentAmount = state.currentAmount;
     let reservedSol = state.reservedSol || 0;
 
+    // Session tracking for hourly heartbeat
+    const sessionStartTime = Date.now();
+    let sessionTradeCount = 0;
+    let lastHeartbeatTime = Date.now();
+
     if (!TOKENS[startToken] || !TOKENS[targetToken]) {
       throw new Error(`Invalid token. Supported tokens are SOL and USDC.`);
     }
@@ -379,6 +385,26 @@ export class JupiterMonitor {
         // Final Assembly for Terminal
         logger.info(`${staticParts} | ${strategyParts.join(' | ')}`);
 
+        // Hourly Heartbeat — send a status update to Discord every HEARTBEAT_INTERVAL_MS
+        if (Date.now() - lastHeartbeatTime >= HEARTBEAT_INTERVAL_MS) {
+          lastHeartbeatTime = Date.now();
+          const uptimeTotalMs = Date.now() - sessionStartTime;
+          const uptimeHours = Math.floor(uptimeTotalMs / 3_600_000);
+          const uptimeMins  = Math.floor((uptimeTotalMs % 3_600_000) / 60_000);
+          const heartbeatMsg = [
+            `**Strategy:** ${activeStrategy.name}`,
+            `**Holding:** ${currentAmount.toFixed(4)} ${startToken} @ $${livePrice.toFixed(2)}`,
+            ``,
+            `**Session PNL:** ${pnlPercStr} (${pnlStr} ${initialAsset})`,
+            `**Mode:** ${strategyParts.join(' | ')}`,
+            ``,
+            `**Session Trades:** ${sessionTradeCount}`,
+            `**Uptime:** ${uptimeHours}h ${uptimeMins}m`,
+          ].join('\n');
+          sendDiscordNotification(DISCORD_WEBHOOK_URL, heartbeatMsg, 0xFFA500, '💓 Hourly Heartbeat');
+          logger.info(`[Heartbeat] Sent to Discord — Uptime: ${uptimeHours}h ${uptimeMins}m | Trades this session: ${sessionTradeCount}`);
+        }
+
         // Extract raw data for CSV and Alarms (safely handling different strategies)
         const latestRsi = metrics.rsiMet ? metrics.rsiMet.val : 0;
         const latestMacdHistogram = metrics.macdMet ? metrics.macdMet.val : 0;
@@ -450,6 +476,7 @@ export class JupiterMonitor {
           state.reservedSol = reservedSol;
           state.entryPrice = executionPrice; // Save the ACTUAL price paid/received for profit guarding
           state.updatedAt = new Date().toISOString();
+          sessionTradeCount++;
           await this.saveState(state);
 
           // Log to dedicated trade file (using the REAL execution price)
