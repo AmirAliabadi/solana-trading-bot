@@ -262,14 +262,14 @@ export class JupiterMonitor {
 
     if (startToken === 'SOL') {
       logger.info(`Goal: Monitor the market to find the best time to swap your SOL to USDC.`);
-      const macdSnippet = USE_MACD ? " AND MACD Histogram < 0" : "";
-      const vwapSnippet = USE_VWAP ? " AND Price drops below VWAP" : "";
-      logger.info(`Condition Criteria: Wait for SOL to be OVERBOUGHT (RSI > ${SELL_RSI})${macdSnippet}${vwapSnippet}.`);
+      const macdSnippet = activeStrategy.config?.USE_MACD ? " AND MACD Histogram < 0" : "";
+      const vwapSnippet = activeStrategy.config?.USE_VWAP ? " AND Price drops below VWAP" : "";
+      logger.info(`Condition Criteria: Wait for SOL to be OVERBOUGHT (RSI > ${activeStrategy.config?.SELL_RSI_THRESHOLD || 'N/A'})${macdSnippet}${vwapSnippet}.`);
     } else {
       logger.info(`Goal: Monitor the market to find the best time to swap your USDC to SOL.`);
-      const macdSnippet = USE_MACD ? " AND MACD Histogram > 0" : "";
-      const vwapSnippet = USE_VWAP ? " AND Price climbs above VWAP" : "";
-      logger.info(`Condition Criteria: Wait for SOL to be OVERSOLD (RSI < ${BUY_RSI})${macdSnippet}${vwapSnippet}.`);
+      const macdSnippet = activeStrategy.config?.USE_MACD ? " AND MACD Histogram > 0" : "";
+      const vwapSnippet = activeStrategy.config?.USE_VWAP ? " AND Price climbs above VWAP" : "";
+      logger.info(`Condition Criteria: Wait for SOL to be OVERSOLD (RSI < ${activeStrategy.config?.BUY_RSI_THRESHOLD || 'N/A'})${macdSnippet}${vwapSnippet}.`);
     }
     
     logger.info(`Polling every ${POLL_INTERVAL/1000} seconds...\n`);
@@ -389,14 +389,16 @@ export class JupiterMonitor {
           } else {
             if (signalType === 'SELL') {
               logger.info(`\n🚨 SELL RECOMMENDATION ALARM 🚨`);
-              const macdPart = USE_MACD ? `, MACD crossed down` : ``;
-              const vwapPart = USE_VWAP ? `, AND Price ($${livePrice.toFixed(2)}) is confirmed below VWAP ($${latestVwap.toFixed(2)})` : ``;
-              logger.info(`SOL is OVERBOUGHT (RSI: ${latestRsi.toFixed(2)} > ${SELL_RSI})${macdPart}${vwapPart}!`);
+              const macdPart = activeStrategy.config?.USE_MACD ? `, MACD crossed down` : ``;
+              const vwapPart = activeStrategy.config?.USE_VWAP ? `, AND Price ($${livePrice.toFixed(2)}) is confirmed below VWAP ($${latestVwap.toFixed(2)})` : ``;
+              const rsiThreshold = activeStrategy.config?.SELL_RSI_THRESHOLD || 'N/A';
+              logger.info(`SOL is OVERBOUGHT (RSI: ${latestRsi.toFixed(2)} > ${rsiThreshold})${macdPart}${vwapPart}!`);
             } else {
               logger.info(`\n🚨 BUY RECOMMENDATION ALARM 🚨`);
-              const macdPart = USE_MACD ? `, MACD crossed up` : ``;
-              const vwapPart = USE_VWAP ? `, AND Price ($${livePrice.toFixed(2)}) safely cleared VWAP ($${latestVwap.toFixed(2)})` : ``;
-              logger.info(`SOL is OVERSOLD (RSI: ${latestRsi.toFixed(2)} < ${BUY_RSI})${macdPart}${vwapPart}!`);
+              const macdPart = activeStrategy.config?.USE_MACD ? `, MACD crossed up` : ``;
+              const vwapPart = activeStrategy.config?.USE_VWAP ? `, AND Price ($${livePrice.toFixed(2)}) safely cleared VWAP ($${latestVwap.toFixed(2)})` : ``;
+              const rsiThreshold = activeStrategy.config?.BUY_RSI_THRESHOLD || 'N/A';
+              logger.info(`SOL is OVERSOLD (RSI: ${latestRsi.toFixed(2)} < ${rsiThreshold})${macdPart}${vwapPart}!`);
             }
           }
         }
