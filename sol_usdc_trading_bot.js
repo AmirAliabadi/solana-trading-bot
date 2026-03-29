@@ -168,6 +168,7 @@ export class JupiterMonitor {
         state.currentAmount = state.currentAmount !== undefined ? state.currentAmount : state.initialAmount;
         state.reservedSol = state.reservedSol || 0;
         state.entryPrice = state.entryPrice || 0;
+        state.gridLastHigh = state.gridLastHigh || null;
         
         return state;
       }
@@ -231,6 +232,7 @@ export class JupiterMonitor {
         currentAmount: parseFloat(cliAmount),
         reservedSol: 0,
         entryPrice: 0,
+        gridLastHigh: null,
         updatedAt: new Date().toISOString()
       };
       await this.saveState(state);
@@ -243,6 +245,11 @@ export class JupiterMonitor {
       logger.info(`Restored active position: ${state.currentAmount.toFixed(4)} ${state.currentAsset}`);
       if (state.reservedSol > 0) {
         logger.info(`Found Reserved SOL: ${state.reservedSol} SOL`);
+      }
+      // Restore GridScalper dip-tracking high so it survives restarts
+      if (state.gridLastHigh && baseStrategy.lastHigh !== undefined) {
+        baseStrategy.lastHigh = state.gridLastHigh;
+        logger.info(`Restored grid lastHigh: $${state.gridLastHigh.toFixed(2)}`);
       }
       logger.info(`\n`);
     }
@@ -359,10 +366,21 @@ export class JupiterMonitor {
         
         pnlPercentage = (currentPnl / initialAmount) * 100;
 
+        const solBalance = startToken === 'SOL' ? currentAmount : reservedSol;
+        const usdcBalance = startToken === 'USDC' ? currentAmount : 0;
+
         const pnlStr = currentPnl >= 0 ? `+${currentPnl.toFixed(4)}` : `${currentPnl.toFixed(4)}`;
         const pnlPercStr = pnlPercentage >= 0 ? `+${pnlPercentage.toFixed(2)}%` : `${pnlPercentage.toFixed(2)}%`;
 
         const { triggered, type, metrics } = activeStrategy.checkSignal(indicators, livePrice, startToken, state.entryPrice);
+
+        // Persist GridScalper's lastHigh so it survives restarts
+        if (metrics.lastHigh) {
+          state.gridLastHigh = metrics.lastHigh;
+        } else if (startToken === 'SOL') {
+          // Reset when we flip back to holding SOL (GridScalper resets lastHigh internally)
+          state.gridLastHigh = null;
+        }
         
         let signalTriggered = triggered;
         const signalType = type;
@@ -393,7 +411,8 @@ export class JupiterMonitor {
           const uptimeMins  = Math.floor((uptimeTotalMs % 3_600_000) / 60_000);
           const heartbeatMsg = [
             `**Strategy:** ${activeStrategy.name}`,
-            `**Holding:** ${currentAmount.toFixed(4)} ${startToken} @ $${livePrice.toFixed(2)}`,
+            `**Balances:** ${solBalance.toFixed(4)} SOL | ${usdcBalance.toFixed(2)} USDC`,
+            `**Price:** $${livePrice.toFixed(2)}`,
             ``,
             `**Session PNL:** ${pnlPercStr} (${pnlStr} ${initialAsset})`,
             `**Mode:** ${strategyParts.join(' | ')}`,
@@ -446,7 +465,7 @@ export class JupiterMonitor {
           // Discord Notification
           const discordColor = signalType === 'BUY' ? 0x00FF00 : 0xFF0000;
           const discordTitle = signalType === 'BUY' ? "🟢 BUY RECOMMENDATION" : "🔴 SELL RECOMMENDATION";
-          const discordMsg = `**Action**: ${signalType} SOL\n**Price**: $${livePrice.toFixed(2)}\n**PNL**: ${pnlPercStr} (${currentPnl.toFixed(4)} ${initialAsset})\n**Strategy**: ${activeStrategy.name}\n\n*Execute your swap to ${targetToken} now!*`;
+          const discordMsg = `**Action**: ${signalType} SOL\n**Price**: $${livePrice.toFixed(2)}\n**Balances**: ${solBalance.toFixed(4)} SOL | ${usdcBalance.toFixed(2)} USDC\n**PNL**: ${pnlPercStr} (${currentPnl.toFixed(4)} ${initialAsset})\n**Strategy**: ${activeStrategy.name}\n\n*Execute your swap to ${targetToken} now!*`;
           sendDiscordNotification(DISCORD_WEBHOOK_URL, discordMsg, discordColor);
           
           logger.info(`\n================ STATE FLIP ================`);
@@ -467,20 +486,24 @@ export class JupiterMonitor {
           startToken = targetToken;
           targetToken = startToken === 'SOL' ? 'USDC' : 'SOL';
           
-          const executionPrice = signalType === 'SELL' 
-            ? receiveAmount / tradeAmount 
-            : tradeAmount / receiveAmount; // For BUY, entry price is USDC spent / SOL received
-
+          // BUG FIX: Use livePrice (clean 1-SOL spot quote) as the entry reference.
+          // The old formula (tradeAmount/receiveAmount for BUY) used the full USDC balance
+          // from the previous sell divided by SOL received after fees — this inflated the
+          // cost basis above the current market price, causing the stop-loss to fire
+          // almost immediately after every buy in a downtrend.
+          // Using livePrice ensures stop-loss and profit-target are always relative to
+          // the actual market price at the moment of entry, matching the configured %s.
           state.currentAsset = startToken;
           state.currentAmount = currentAmount;
           state.reservedSol = reservedSol;
-          state.entryPrice = executionPrice; // Save the ACTUAL price paid/received for profit guarding
+          state.entryPrice = livePrice; // Anchor to current market price, not inflated cost basis
+          state.gridLastHigh = null;    // Always reset lastHigh on a trade execution
           state.updatedAt = new Date().toISOString();
           sessionTradeCount++;
           await this.saveState(state);
 
-          // Log to dedicated trade file (using the REAL execution price)
-          const tradeLogEntry = `${new Date().toISOString()},${signalType},${tradeAmount.toFixed(6)},${state.currentAsset === 'SOL' ? 'USDC' : 'SOL'},${receiveAmount.toFixed(6)},${state.currentAsset},${executionPrice.toFixed(4)}`;
+          // Log to dedicated trade file (entry reference = livePrice at signal time)
+          const tradeLogEntry = `${new Date().toISOString()},${signalType},${tradeAmount.toFixed(6)},${state.currentAsset === 'SOL' ? 'USDC' : 'SOL'},${receiveAmount.toFixed(6)},${state.currentAsset},${livePrice.toFixed(4)}`;
           tradeLogger.info(tradeLogEntry);
 
           if (startToken === 'SOL') {
