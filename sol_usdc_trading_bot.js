@@ -142,7 +142,10 @@ const activeStrategy = PROFIT_THRESHOLD > 0
     ? new ProfitGuardedStrategy(baseStrategy, PROFIT_THRESHOLD)
     : baseStrategy;
 
-logger.info(`Strategy Loaded: ${activeStrategy.name}`);
+const BOT_VERSION = "1.1.0";
+
+logger.info(`Bot Version v${BOT_VERSION} Starting...`);
+logger.info(`Strategy Loaded: ${activeStrategy.name} (v${activeStrategy.version})`);
 if (ENABLE_DATA_LOGGING) {
   logger.info(`Data Logging: ENABLED (Slicing into data_logs/)`);
 }
@@ -410,7 +413,8 @@ export class JupiterMonitor {
           const uptimeHours = Math.floor(uptimeTotalMs / 3_600_000);
           const uptimeMins  = Math.floor((uptimeTotalMs % 3_600_000) / 60_000);
           const heartbeatMsg = [
-            `**Strategy:** ${activeStrategy.name}`,
+            `**Bot Version:** v${BOT_VERSION}`,
+            `**Strategy:** ${activeStrategy.name} (v${activeStrategy.version})`,
             `**Balances:** ${solBalance.toFixed(4)} SOL | ${usdcBalance.toFixed(2)} USDC`,
             `**Price:** $${livePrice.toFixed(2)}`,
             ``,
@@ -465,7 +469,7 @@ export class JupiterMonitor {
           // Discord Notification
           const discordColor = signalType === 'BUY' ? 0x00FF00 : 0xFF0000;
           const discordTitle = signalType === 'BUY' ? "🟢 BUY RECOMMENDATION" : "🔴 SELL RECOMMENDATION";
-          const discordMsg = `**Action**: ${signalType} SOL\n**Price**: $${livePrice.toFixed(2)}\n**Balances**: ${solBalance.toFixed(4)} SOL | ${usdcBalance.toFixed(2)} USDC\n**PNL**: ${pnlPercStr} (${currentPnl.toFixed(4)} ${initialAsset})\n**Strategy**: ${activeStrategy.name}\n\n*Execute your swap to ${targetToken} now!*`;
+          const discordMsg = `**Action**: ${signalType} SOL\n**Price**: $${livePrice.toFixed(2)}\n**Balances**: ${solBalance.toFixed(4)} SOL | ${usdcBalance.toFixed(2)} USDC\n**PNL**: ${pnlPercStr} (${currentPnl.toFixed(4)} ${initialAsset})\n**Bot Version**: v${BOT_VERSION}\n**Strategy**: ${activeStrategy.name} (v${activeStrategy.version})\n\n*Execute your swap to ${targetToken} now!*`;
           sendDiscordNotification(DISCORD_WEBHOOK_URL, discordMsg, discordColor);
           
           logger.info(`\n================ STATE FLIP ================`);

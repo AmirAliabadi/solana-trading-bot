@@ -1,6 +1,7 @@
 export class GridScalperStrategy {
     constructor(config = {}) {
         this.name = "GRID_SCALPER";
+        this.version = "1.0.0";
         // Convert config values like 0.8 to absolute decimals like 0.008
         this.buyDropPct = (parseFloat(config.GRID_BUY_DROP_PCT) || 0.8) / 100;
         // Accept both key names for backwards compatibility

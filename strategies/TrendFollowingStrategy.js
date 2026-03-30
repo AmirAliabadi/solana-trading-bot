@@ -3,6 +3,7 @@ import { EMA, RSI } from 'technicalindicators';
 export class TrendFollowingStrategy {
   constructor(config = {}) {
     this.name = "Trend Following (EMA Crossover)";
+    this.version = "1.0.0";
     this.fastPeriod = config.EMA_FAST || 9;
     this.slowPeriod = config.EMA_SLOW || 21;
     this.rsiPeriod = 14;

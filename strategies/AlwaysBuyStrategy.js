@@ -1,6 +1,7 @@
 export class AlwaysBuyStrategy {
   constructor(config = {}) {
     this.name = "Test Strategy (Always Buy)";
+    this.version = "1.0.0";
   }
 
   getRequiredIndicators() {

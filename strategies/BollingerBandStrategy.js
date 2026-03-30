@@ -3,6 +3,7 @@ import { BollingerBands, RSI } from 'technicalindicators';
 export class BollingerBandStrategy {
   constructor(config = {}) {
     this.name = "Bollinger Band Reversion";
+    this.version = "1.0.0";
     this.period = config.BB_PERIOD || 20;
     this.stdDev = config.BB_STDDEV || 2;
   }

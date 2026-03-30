@@ -2,6 +2,7 @@ export class ProfitGuardedStrategy {
   constructor(baseStrategy, threshold = 0.025) {
     this.baseStrategy = baseStrategy;
     this.name = `${baseStrategy.name} + Profit Guard (${threshold}%)`;
+    this.version = "1.0.0";
     this.threshold = threshold / 100; // Convert percentage to decimal
   }
 

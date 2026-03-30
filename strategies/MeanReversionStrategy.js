@@ -3,6 +3,7 @@ import { RSI, MACD, VWAP } from 'technicalindicators';
 export class MeanReversionStrategy {
   constructor(config = {}) {
     this.name = "Mean Reversion (RSI + MACD + VWAP)";
+    this.version = "1.0.0";
     this.buyRsi = config.BUY_RSI_THRESHOLD || config.BUY_RSI || 40;
     this.sellRsi = config.SELL_RSI_THRESHOLD || config.SELL_RSI || 60;
     this.useMacd = config.USE_MACD !== false;

@@ -3,6 +3,7 @@ import { SMA, RSI, MACD, BollingerBands } from 'technicalindicators';
 export default class SimpleTrendStrategy {
     constructor(config = {}) {
         this.name = "SIMPLE_TREND";
+        this.version = "1.0.0";
         this.lastLow = null;
         this.lastHigh = null;
         

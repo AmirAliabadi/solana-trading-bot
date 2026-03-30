@@ -3,6 +3,7 @@ import { SMA, RSI } from 'technicalindicators';
 export class VolumeBreakoutStrategy {
     constructor(config = {}) {
         this.name = "VOLUME_BREAKOUT";
+        this.version = "1.0.0";
         this.volPeriod = parseInt(config.VOLUME_MA_PERIOD) || 20;
         this.volMultiplier = parseFloat(config.VOLUME_MULTIPLIER) || 3.0;
         this.buyRsi = parseInt(config.BUY_RSI) || 60; // Don't buy if already insanely overbought
