@@ -145,7 +145,9 @@ const activeStrategy = PROFIT_THRESHOLD > 0
 const BOT_VERSION = "1.1.0";
 
 logger.info(`Bot Version v${BOT_VERSION} Starting...`);
-logger.info(`Strategy Loaded: ${activeStrategy.name} (v${activeStrategy.version})`);
+const strategyProfile = configFilename.replace(`${ACTIVE_STRATEGY_NAME}-`, '').replace('.json', '');
+logger.info(`Strategy Loaded: ${activeStrategy.name} (v${activeStrategy.version}) [Profile: ${strategyProfile}]`);
+logger.info(`Strategy Details: ${JSON.stringify(strategyConfig, null, 2)}`);
 if (ENABLE_DATA_LOGGING) {
   logger.info(`Data Logging: ENABLED (Slicing into data_logs/)`);
 }
