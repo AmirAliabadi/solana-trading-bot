@@ -413,23 +413,32 @@ export class JupiterMonitor {
         // Hourly Heartbeat — send a status update to Discord every HEARTBEAT_INTERVAL_MS
         if (Date.now() - lastHeartbeatTime >= HEARTBEAT_INTERVAL_MS) {
           lastHeartbeatTime = Date.now();
-          const uptimeTotalMs = Date.now() - sessionStartTime;
-          const uptimeHours = Math.floor(uptimeTotalMs / 3_600_000);
-          const uptimeMins  = Math.floor((uptimeTotalMs % 3_600_000) / 60_000);
-          const heartbeatMsg = [
-            `**Bot Version:** v${BOT_VERSION}`,
-            `**Strategy:** ${activeStrategy.name} (v${activeStrategy.version})`,
-            `**Balances:** ${solBalance.toFixed(4)} SOL | ${usdcBalance.toFixed(2)} USDC`,
-            `**Price:** $${livePrice.toFixed(2)}`,
-            ``,
-            `**Session PNL:** ${pnlPercStr} (${pnlStr} ${initialAsset})`,
-            `**Mode:** ${strategyParts.join(' | ')}`,
-            ``,
-            `**Session Trades:** ${sessionTradeCount}`,
-            `**Uptime:** ${uptimeHours}h ${uptimeMins}m`,
-          ].join('\n');
-          sendDiscordNotification(DISCORD_WEBHOOK_URL, heartbeatMsg, 0xFFA500, '💓 Hourly Heartbeat');
-          logger.info(`[Heartbeat] Sent to Discord — Uptime: ${uptimeHours}h ${uptimeMins}m | Trades this session: ${sessionTradeCount}`);
+          
+          const formatter = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false });
+          const currentHourPST = parseInt(formatter.format(new Date())) % 24;
+          const isQuietHours = currentHourPST >= 22 || currentHourPST < 6;
+
+          if (!isQuietHours) {
+            const uptimeTotalMs = Date.now() - sessionStartTime;
+            const uptimeHours = Math.floor(uptimeTotalMs / 3_600_000);
+            const uptimeMins  = Math.floor((uptimeTotalMs % 3_600_000) / 60_000);
+            const heartbeatMsg = [
+              `**Bot Version:** v${BOT_VERSION}`,
+              `**Strategy:** ${activeStrategy.name} (v${activeStrategy.version})`,
+              `**Balances:** ${solBalance.toFixed(4)} SOL | ${usdcBalance.toFixed(2)} USDC`,
+              `**Price:** $${livePrice.toFixed(2)}`,
+              ``,
+              `**Session PNL:** ${pnlPercStr} (${pnlStr} ${initialAsset})`,
+              `**Mode:** ${strategyParts.join(' | ')}`,
+              ``,
+              `**Session Trades:** ${sessionTradeCount}`,
+              `**Uptime:** ${uptimeHours}h ${uptimeMins}m`,
+            ].join('\n');
+            sendDiscordNotification(DISCORD_WEBHOOK_URL, heartbeatMsg, 0xFFA500, '💓 Hourly Heartbeat');
+            logger.info(`[Heartbeat] Sent to Discord — Uptime: ${uptimeHours}h ${uptimeMins}m | Trades this session: ${sessionTradeCount}`);
+          } else {
+            logger.info(`[Heartbeat] Suppressed (Quiet Hours 10PM-6AM PST)`);
+          }
         }
 
         // Extract raw data for CSV and Alarms (safely handling different strategies)
