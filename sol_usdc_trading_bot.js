@@ -284,12 +284,20 @@ export class JupiterMonitor {
       logger.info(`Goal: Monitor the market to find the best time to swap your SOL to USDC.`);
       const macdSnippet = activeStrategy.config?.USE_MACD ? " AND MACD Histogram < 0" : "";
       const vwapSnippet = activeStrategy.config?.USE_VWAP ? " AND Price drops below VWAP" : "";
-      logger.info(`Condition Criteria: Wait for SOL to be OVERBOUGHT (RSI > ${activeStrategy.config?.SELL_RSI_THRESHOLD || 'N/A'})${macdSnippet}${vwapSnippet}.`);
+      if (activeStrategy.config?.SELL_RSI_THRESHOLD) {
+         logger.info(`Condition Criteria: Wait for SOL to be OVERBOUGHT (RSI > ${activeStrategy.config.SELL_RSI_THRESHOLD})${macdSnippet}${vwapSnippet}.`);
+      } else {
+         logger.info(`Condition Criteria: Executing custom logic for ${activeStrategy.name}.`);
+      }
     } else {
       logger.info(`Goal: Monitor the market to find the best time to swap your USDC to SOL.`);
       const macdSnippet = activeStrategy.config?.USE_MACD ? " AND MACD Histogram > 0" : "";
       const vwapSnippet = activeStrategy.config?.USE_VWAP ? " AND Price climbs above VWAP" : "";
-      logger.info(`Condition Criteria: Wait for SOL to be OVERSOLD (RSI < ${activeStrategy.config?.BUY_RSI_THRESHOLD || 'N/A'})${macdSnippet}${vwapSnippet}.`);
+      if (activeStrategy.config?.BUY_RSI_THRESHOLD) {
+         logger.info(`Condition Criteria: Wait for SOL to be OVERSOLD (RSI < ${activeStrategy.config.BUY_RSI_THRESHOLD})${macdSnippet}${vwapSnippet}.`);
+      } else {
+         logger.info(`Condition Criteria: Executing custom logic for ${activeStrategy.name}.`);
+      }
     }
     
     logger.info(`Polling every ${POLL_INTERVAL/1000} seconds...\n`);
