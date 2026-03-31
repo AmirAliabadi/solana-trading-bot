@@ -90,4 +90,26 @@ export class VolumeBreakoutStrategy {
             targetPart
         ];
     }
+
+    getAlarmParts(type, metrics, livePrice) {
+        if (type === 'SELL') {
+            const reason = metrics.reason || 'SELL';
+            if (reason === 'RSI_OVERBOUGHT') {
+                return [
+                    `📈 RSI Overbought (${metrics.rsi?.toFixed(1)} ≥ ${this.sellRsi}) — momentum exhausted, exiting position`,
+                    `Trailing stop was at $${(metrics.lastHigh * (1 - this.sellThreshold)).toFixed(2)}`
+                ];
+            }
+            return [
+                `📉 Trailing Stop triggered — price ($${livePrice.toFixed(2)}) dropped ${(this.sellThreshold * 100).toFixed(1)}% from peak $${(metrics.lastHigh || livePrice).toFixed(2)}`,
+                `Locking in breakout gains`
+            ];
+        }
+        const volRatio = ((metrics.currentVolume || 0) / (metrics.volSma || 1)).toFixed(1);
+        return [
+            `🚀 Volume Breakout — ${volRatio}x the 20-period average (threshold: ${this.volMultiplier}x)`,
+            `RSI (${metrics.rsi?.toFixed(1)}) below ${this.buyRsi} — momentum is not yet overextended`,
+            `Price is moving up on high conviction — entering breakout`
+        ];
+    }
 }

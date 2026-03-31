@@ -50,13 +50,13 @@ export class MeanReversionStrategy {
   checkSignal(indicators, livePrice, currentAsset) {
     const { latestRsi, latestMacd, latestVwap } = indicators;
     const isBuy = currentAsset === 'USDC';
-    
+
     let rsiMet = isBuy ? (latestRsi < this.buyRsi) : (latestRsi > this.sellRsi);
     let macdMet = isBuy ? (this.useMacd ? latestMacd.histogram > 0 : true) : (this.useMacd ? latestMacd.histogram < 0 : true);
-    
+
     let vwapMet = true;
     if (this.useVwap) {
-      const vwapThreshold = isBuy 
+      const vwapThreshold = isBuy
         ? latestVwap * (1 - (this.vwapOffset / 100))
         : latestVwap * (1 + (this.vwapOffset / 100));
       vwapMet = isBuy ? (livePrice >= vwapThreshold) : (livePrice <= vwapThreshold);

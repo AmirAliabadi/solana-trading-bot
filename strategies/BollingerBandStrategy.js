@@ -18,7 +18,7 @@ export class BollingerBandStrategy {
       values: marketData.close,
       stdDev: this.stdDev
     });
-    
+
     const rsi = RSI.calculate({
       period: 14,
       values: marketData.close
@@ -39,7 +39,7 @@ export class BollingerBandStrategy {
     // Bollinger Band Logic:
     // Buy when price hits Lower Band (and RSI < 45 for extra safety)
     // Sell when price hits Upper Band (and RSI > 55)
-    
+
     let bbMet = isBuy ? (livePrice <= latestBb.lower) : (livePrice >= latestBb.upper);
     let rsiMet = isBuy ? (latestRsi < 45) : (latestRsi > 55);
 

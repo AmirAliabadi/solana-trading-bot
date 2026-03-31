@@ -53,4 +53,18 @@ export class SimplePercentStrategy {
             `Buy Dip Target (Down 2.5%): $${buyTarget}`
         ];
     }
+
+    getAlarmParts(type, metrics, livePrice) {
+        const ref = metrics.entryPrice || livePrice;
+        if (type === 'SELL') {
+            return [
+                `🎯 Take-Profit hit — price ($${livePrice.toFixed(2)}) rose +${(this.sellTargetPct * 100).toFixed(1)}% from entry $${ref.toFixed(2)}`,
+                `Fixed profit target reached — swapping back to USDC`
+            ];
+        }
+        return [
+            `📉 Dip Target hit — price ($${livePrice.toFixed(2)}) fell -${(this.buyTargetPct * 100).toFixed(1)}% from reference $${ref.toFixed(2)}`,
+            `Fixed re-entry threshold reached — swapping back to SOL`
+        ];
+    }
 }

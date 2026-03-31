@@ -32,7 +32,7 @@ export class TrendFollowingStrategy {
     // Trend following logic:
     // Buy when Fast EMA crosses Above Slow EMA AND RSI shows upward strength (> 50)
     // Sell when Fast EMA crosses Below Slow EMA AND RSI shows downward weakness (< 50)
-    
+
     let emaMet = isBuy ? (fastEma > slowEma) : (fastEma < slowEma);
     let rsiMet = isBuy ? (latestRsi > 50) : (latestRsi < 50);
 

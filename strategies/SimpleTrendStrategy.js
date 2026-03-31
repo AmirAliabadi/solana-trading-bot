@@ -69,5 +69,22 @@ export default class SimpleTrendStrategy {
         }
         return parts;
     }
+
+    getAlarmParts(type, metrics, livePrice) {
+        if (type === 'SELL') {
+            const peak = metrics.lastHigh || livePrice;
+            const dropPct = (this.sellThreshold * 100).toFixed(1);
+            return [
+                `📉 Price ($${livePrice.toFixed(2)}) pulled back ${dropPct}% from peak $${peak.toFixed(2)}`,
+                `Sell threshold reached — locking in trend gains`
+            ];
+        }
+        const low = metrics.lastLow || livePrice;
+        const bouncePct = (this.buyThreshold * 100).toFixed(1);
+        return [
+            `📈 Price ($${livePrice.toFixed(2)}) bounced ${bouncePct}% off the local low $${low.toFixed(2)}`,
+            `Trend reversal confirmed — entering the recovery move`
+        ];
+    }
 }
 

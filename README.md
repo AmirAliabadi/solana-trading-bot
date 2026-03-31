@@ -8,15 +8,17 @@ A fully automated, modular Spot Trading Bot for the **SOL/USDC** pair on Solana.
 
 ## Features
 
-- **7 Pluggable Strategies** — swap between algorithms via a single `.env` line, no code changes required
+- **8 Pluggable Strategies** — swap between algorithms via a single `.env` line, no code changes required
 - **Profit Guard Layer** — wraps any strategy and blocks round-trips that don't clear a minimum profit threshold
+- **ATR-Dynamic Stops** — the new `DYNAMIC_TRAILING` strategy scales stop-loss and profit targets with live market volatility
 - **Stop-Loss on GridScalper** — hard floor exit to cap downside per trade
 - **Price Impact Guard** — blocks trades when on-chain liquidity is too thin (configurable %)
 - **Persistent State** — survives restarts; reads `trading_state.json` to resume the exact session
 - **Multi-file Logging** — hourly-rotated console/file logs + dedicated trade CSV for audit trails
-- **Discord Notifications** — startup ping, BUY/SELL alerts with price, PNL, and strategy name
-- **Hourly Heartbeat** — periodic Discord status update with PNL, mode, uptime, and trade count
-- **Backtesting Engine** — replay all strategies against months of OHLCV history in one command
+- **Discord Notifications** — startup ping with strategy name + profile, BUY/SELL alerts with price, PNL, and balances
+- **Quiet Hours** — heartbeat is silenced between 10 PM and 6 AM PST automatically
+- **Hourly Heartbeat** — periodic Discord status update with PNL, SOL/USDC balances, uptime, and trade count
+- **Backtesting Engine** — replay all strategies against months of OHLCV history across multiple timeframes in one command
 
 ---
 
@@ -42,9 +44,9 @@ Edit `.env` — the key fields are:
 
 | Variable | Description | Default |
 |---|---|---|
-| `ACTIVE_STRATEGY` | Strategy to run (see list below) | `GRID_SCALPER` |
-| `ACTIVE_STRATEGY_CONFIG` | Config profile filename inside `strategies/configs/` | `GRID_SCALPER-optimal.json` |
-| `BINANCE_INTERVAL` | Candle resolution for TA (`1m`, `5m`, `15m`, `1h`, …) | `5m` |
+| `ACTIVE_STRATEGY` | Strategy to run (see list below) | `DYNAMIC_TRAILING` |
+| `ACTIVE_STRATEGY_CONFIG` | Config profile filename inside `strategies/configs/` | `DYNAMIC_TRAILING-aggressive.json` |
+| `BINANCE_INTERVAL` | Candle resolution for TA (`1m`, `5m`, `15m`, `1h`, …) | `15m` |
 | `POLL_INTERVAL` | How often the bot polls, in milliseconds | `30000` |
 | `MAX_PRICE_IMPACT` | Block trades above this on-chain price impact % | `0.1` |
 | `PROFIT_THRESHOLD_PERCENT` | Minimum % gain required before allowing a reverse swap | `0.25` |
@@ -69,8 +71,6 @@ If you start with **SOL** and no prior trade history, the bot has no cost basis 
 [Session] No entry price found. Anchoring cost basis to current price: $XX.XX
 ```
 
-GridScalper will then immediately switch to `🎯 SCALPING TARGET` mode and begin tracking exits from that anchor price.
-
 **Resume** after a restart (reads `trading_state.json` automatically):
 
 ```bash
@@ -84,15 +84,60 @@ node sol_usdc_trading_bot.js
 The bot's strategy system is fully modular. Select a strategy in `.env` and optionally point to a config profile:
 
 ```env
-ACTIVE_STRATEGY=GRID_SCALPER
-ACTIVE_STRATEGY_CONFIG=GRID_SCALPER-optimal.json
+ACTIVE_STRATEGY=DYNAMIC_TRAILING
+ACTIVE_STRATEGY_CONFIG=DYNAMIC_TRAILING-aggressive.json
+BINANCE_INTERVAL=15m
 ```
 
 Each strategy ships with three config profiles in `strategies/configs/`: `default`, `conservative`, and `aggressive`.
 
 ---
 
-### 1. `GRID_SCALPER` ⭐ Recommended for 0.025%/day target
+### 1. `DYNAMIC_TRAILING` ⭐ New — Best Backtested Performance
+
+**Philosophy:** A volatility-aware swing trading strategy that adapts its stop-loss and profit target dynamically to the current market's ATR (Average True Range). It only enters on high-confidence RSI divergence signals, avoiding entries during volatility panics.
+
+**Logic:**
+- **BUY** → Price forms a swing low AND RSI is *higher* than on the previous low (bullish divergence) AND RSI is below `RSI_BUY_MAX` AND ATR spike is not indicating a panic
+- **SELL** → Price hits ATR-scaled take-profit OR ATR-scaled stop-loss OR trailing stop triggers (after gains) OR RSI exceeds `RSI_SELL_MIN`
+
+**Why it beats fixed-% strategies:** During a SOL flash crash, ATR naturally widens — giving the bot more breathing room before stop-loss fires. During calm markets, ATR tightens — locking profits faster and stopping out gracefully.
+
+**Config profiles (`strategies/configs/DYNAMIC_TRAILING-*.json`):**
+
+| Profile | ATR Stop | ATR Target | ATR Trail | Entry RSI Max | Use Case |
+|---|---|---|---|---|---|
+| `aggressive` | 1.0× | 1.8× | 0.8× | RSI < 50 | More frequent trades, tighter exits |
+| `default` | 1.5× | 2.5× | 1.2× | RSI < 45 | Balanced risk/reward |
+| `conservative` | 2.0× | 3.5× | 1.8× | RSI < 40 | Patient swing trades, crash-resistant |
+
+**Config keys:**
+
+```json
+{
+  "ATR_PERIOD": 14,
+  "ATR_STOP_MULT": 1.5,
+  "ATR_PROFIT_MULT": 2.5,
+  "ATR_TRAIL_MULT": 1.2,
+  "ATR_PANIC_MULT": 2.5,
+  "RSI_PERIOD": 14,
+  "RSI_BUY_MAX": 45,
+  "RSI_SELL_MIN": 65,
+  "SWING_WINDOW": 5
+}
+```
+
+**Backtested results (15m, 5 months Nov 2025–Mar 2026, starting 60 SOL):**
+
+| Profile | PnL | Trades | Final SOL |
+|---|---|---|---|
+| `aggressive` | **+65.21%** | 51 | 99.12 |
+| `conservative` | +37.15% | 51 | 82.29 |
+| `default` | +34.34% | 61 | 80.60 |
+
+---
+
+### 2. `GRID_SCALPER`
 
 **Philosophy:** Track the local price high while holding USDC. Buy when price dips a set percentage from that high. Sell mechanically when a fixed profit target is hit — or cut losses at the stop-loss.
 
@@ -100,8 +145,6 @@ Each strategy ships with three config profiles in `strategies/configs/`: `defaul
 - **BUY** → Price drops `GRID_BUY_DROP_PCT`% from local high
 - **SELL** → Price rises `GRID_SELL_TARGET_PCT`% above entry price
 - **STOP** → Price drops `GRID_STOP_LOSS_PCT`% below entry price (hard floor)
-
-**Why it hits the daily target:** Exits are deterministic, not indicator-based. You engineer the profit per trade. With the `optimal` profile (0.3% dip / 0.35% target), SOL's intraday volatility provides multiple opportunities daily.
 
 **Display modes in the console log:**
 
@@ -115,10 +158,12 @@ Each strategy ships with three config profiles in `strategies/configs/`: `defaul
 
 | Profile | Buy Drop | Sell Target | Stop Loss | Use Case |
 |---|---|---|---|---|
-| `optimal` | 0.3% | 0.35% | 0.75% | **0.025%/day target** |
+| `optimal` | 0.3% | 0.35% | 0.75% | High-frequency scalping |
 | `default` | 1.0% | 1.0% | 1.5% | Moderate swings |
 | `conservative` | 2.0% | 0.5% | 3.0% | Deep dip hunter |
 | `aggressive` | 0.5% | 2.0% | 1.0% | Ride large moves |
+
+> ⚠️ **Timeframe matters critically** for this strategy. The same conservative config that loses -38% on `1m` returns +32% on `1h`. Use `1h` or `15m` — never `1m`.
 
 **Config keys:**
 
@@ -132,7 +177,7 @@ Each strategy ships with three config profiles in `strategies/configs/`: `defaul
 
 ---
 
-### 2. `MEAN_REVERSION`
+### 3. `MEAN_REVERSION`
 
 **Philosophy:** SOL oscillates between extremes. Buy when it's oversold, sell when it's overbought.
 
@@ -159,7 +204,7 @@ Each strategy ships with three config profiles in `strategies/configs/`: `defaul
 
 ---
 
-### 3. `BOLLINGER_BANDS`
+### 4. `BOLLINGER_BANDS`
 
 **Philosophy:** Use statistical volatility bands as natural support/resistance levels.
 
@@ -180,7 +225,7 @@ Best suited to **ranging/choppy** SOL markets. In strong trends, price can "walk
 
 ---
 
-### 4. `TREND_FOLLOWING`
+### 5. `TREND_FOLLOWING`
 
 **Philosophy:** Capture breakouts by riding EMA crossovers with RSI momentum confirmation.
 
@@ -201,7 +246,7 @@ Best suited to **ranging/choppy** SOL markets. In strong trends, price can "walk
 
 ---
 
-### 5. `SIMPLE_TREND`
+### 6. `SIMPLE_TREND`
 
 **Philosophy:** Pure price momentum. Buy after a confirmed bounce off a bottom; sell after a pullback from a peak.
 
@@ -222,7 +267,7 @@ Best suited to **ranging/choppy** SOL markets. In strong trends, price can "walk
 
 ---
 
-### 6. `VOLUME_BREAKOUT`
+### 7. `VOLUME_BREAKOUT`
 
 **Philosophy:** Wait for institutional-grade volume spikes that signal conviction breakouts.
 
@@ -241,11 +286,11 @@ Best suited to **ranging/choppy** SOL markets. In strong trends, price can "walk
 }
 ```
 
-> Best on `1m` or `5m` candles. On `15m`+ timeframes, 3x volume spikes become very rare. Lower `VOLUME_MULTIPLIER` to ~1.5 for higher signal frequency.
+> Best on `5m` or `15m` candles. Consistent positive PnL across all tested timeframes, making it a solid secondary strategy.
 
 ---
 
-### 7. `ALWAYS_BUY` (Testing Only)
+### 8. `ALWAYS_BUY` (Testing Only)
 
 Immediately triggers BUY or SELL on every poll cycle. Used solely to verify the modular strategy architecture and Profit Guard wrapper are working. **Do not use for live trading.**
 
@@ -301,26 +346,47 @@ The bot sends three types of Discord messages via the webhook configured in `DIS
 
 | Event | Colour | When it fires |
 |---|---|---|
-| 🚀 **Bot Initialized** | Blue | Once at startup — shows strategy name and starting portfolio |
-| 📈 / 📉 **Trade Alert** | Green (buy) / Red (sell) | Each time a swap signal is triggered — includes price, PNL, and reason |
+| 🚀 **Bot Initialized** | Blue | Once at startup — shows strategy name, profile, and starting portfolio |
+| 📈 / 📉 **Trade Alert** | Green (buy) / Red (sell) | Each time a swap signal is triggered — includes price, SOL/USDC balances, PNL, and reason |
 | 💓 **Hourly Heartbeat** | Orange | Every `HEARTBEAT_INTERVAL_MS` milliseconds (default: 1 hour) |
 
-### Heartbeat message
+### Startup message
 
-The heartbeat fires automatically on the next poll after the interval expires. It sends a concise snapshot directly to your Discord channel:
+```
+🚀 Bot Initialized
+Strategy: DYNAMIC_TRAILING
+Profile: aggressive
+Portfolio: 60.0000 SOL
+```
+
+### Trade alert message
+
+```
+🚀 SOL/USDC Trading Bot Alert
+Action: BUY SOL
+Price: $128.45
+Balances: 0.0500 SOL | 7707.00 USDC
+PNL: +1.24% (+0.7440 SOL)
+Strategy: DYNAMIC_TRAILING + Profit Guard (0.25%)
+```
+
+### Heartbeat message
 
 ```
 💓 Hourly Heartbeat
 
-Strategy: GRID_SCALPER + Profit Guard (0.25%)
-Holding: 60.0000 SOL @ $83.42
+Strategy: DYNAMIC_TRAILING + Profit Guard (0.25%)
+Balances: 72.3100 SOL | 0.00 USDC
+Live Price: $129.10
 
-Session PNL: +0.12% (+0.0720 SOL)
-Mode: 🎯 SCALPING TARGET | Target: $83.67 | Stop: 🛑$82.75
+Session PNL: +20.52% (+12.312 SOL)
+Mode: RSI: 38.2 🟢 | ATR: 1.842 (1.05x avg) 🟢 | Divergence: ⏳ Watching...
 
-Session Trades: 2
+Session Trades: 18
 Uptime: 3h 15m
 ```
+
+**Quiet Hours:** The heartbeat is automatically silenced between **10 PM and 6 AM PST** to avoid noise during off-hours. Trade alerts still fire at any time.
 
 **Tune the interval:**
 
@@ -343,11 +409,11 @@ HEARTBEAT_INTERVAL_MS=300000
 Fetch OHLCV data from Binance and save it month-by-month to `historical_data/<interval>/`:
 
 ```bash
-# 150 days of 1-minute data starting Nov 1 2025
-node download_history.js 2025-11-01 150 1m
+# 150 days of 5-minute data starting Nov 1 2025
+node download_history.js 2025-11-01 150 5m
 
-# 150 days of 1-hour data (faster, recommended for first run)
-node download_history.js 2025-11-01 150 1h
+# 150 days of 15-minute data (recommended for DYNAMIC_TRAILING)
+node download_history.js 2025-11-01 150 15m
 ```
 
 **Valid intervals:** `1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `6h`, `8h`, `12h`, `1d`, `1w`
@@ -360,14 +426,17 @@ timestamp, open, high, low, close, volume, quoteVolume, trades, takerBaseVolume,
 
 ### 2. Run the Backtest Engine
 
-The engine tests **all strategies × all config profiles simultaneously** and prints a ranked results table:
+The engine tests **all strategies × all config profiles simultaneously** and prints a ranked results table.
 
 ```bash
-# Start with 60 SOL, use 1h data
-node backtest.js 60 SOL 1h
+# Test all strategies on 15m data, starting with 60 SOL
+node backtest.js --interval 15m
 
-# Start with 5000 USDC, use 1m data
-node backtest.js 5000 USDC 1m
+# Test a single strategy and profile
+node backtest.js --strategy DYNAMIC_TRAILING --profile aggressive --interval 15m
+
+# Test on 1h data
+node backtest.js --interval 1h
 ```
 
 **Backtest parameters:**
@@ -375,13 +444,18 @@ node backtest.js 5000 USDC 1m
 - Profit guard threshold: reads `PROFIT_THRESHOLD_PERCENT` from `.env` (default `0.25`)
 - Warm-up: skips first 50 candles to allow indicators to stabilize
 
-**Example output:**
+**Example output (15m, 5 months):**
 ```
-Strategy                           :    PNL% | Trades
-GRID_SCALPER-optimal               :  +12.45% |    47
-BOLLINGER_BANDS-conservative       :   +8.11% |    22
-MEAN_REVERSION-default             :   +5.33% |    14
-...
+┌──────────────────────────────────┬───────────┬────────┬──────────┐
+│ name                             │ pnl       │ trades │ finalSol │
+├──────────────────────────────────┼───────────┼────────┼──────────┤
+│ DYNAMIC_TRAILING-aggressive      │ '65.21%'  │ 51     │ '99.12'  │
+│ DYNAMIC_TRAILING-conservative    │ '37.15%'  │ 51     │ '82.29'  │
+│ DYNAMIC_TRAILING-default         │ '34.34%'  │ 61     │ '80.60'  │
+│ GRID_SCALPER-conservative        │ '25.89%'  │ 143    │ '75.53'  │
+│ VOLUME_BREAKOUT-default          │ '7.13%'   │ 4      │ '64.28'  │
+│ ...                              │ ...       │ ...    │ ...      │
+└──────────────────────────────────┴───────────┴────────┴──────────┘
 ```
 
 ---
@@ -408,16 +482,21 @@ jupiter-bot/
 ├── .env.example                # Config template
 │
 ├── strategies/
+│   ├── DynamicTrailingStrategy.js  # ATR-dynamic stops + RSI divergence ⭐ NEW
 │   ├── GridScalperStrategy.js      # Dip-buy + profit target + stop-loss
 │   ├── MeanReversionStrategy.js    # RSI + MACD + VWAP
 │   ├── BollingerBandStrategy.js    # BB bands + RSI
 │   ├── TrendFollowingStrategy.js   # EMA crossover + RSI
 │   ├── SimpleTrendStrategy.js      # % bounce / % pullback
 │   ├── VolumeBreakoutStrategy.js   # Volume spike + trailing stop
+│   ├── SimplePercentStrategy.js    # Fixed % targets
 │   ├── ProfitGuardedStrategy.js    # Decorator: wraps any strategy
 │   ├── AlwaysBuyStrategy.js        # Test harness only
 │   └── configs/
-│       ├── GRID_SCALPER-optimal.json       ← tuned for 0.025%/day
+│       ├── DYNAMIC_TRAILING-aggressive.json   ← backtested best performer
+│       ├── DYNAMIC_TRAILING-default.json
+│       ├── DYNAMIC_TRAILING-conservative.json
+│       ├── GRID_SCALPER-optimal.json
 │       ├── GRID_SCALPER-default.json
 │       ├── GRID_SCALPER-conservative.json
 │       ├── GRID_SCALPER-aggressive.json
@@ -434,6 +513,7 @@ jupiter-bot/
 └── historical_data/
     ├── 1m/                     # 1-minute OHLCV monthly files
     ├── 5m/                     # 5-minute OHLCV monthly files
+    ├── 15m/                    # 15-minute OHLCV monthly files
     └── 1h/                     # 1-hour OHLCV monthly files
 ```
 
@@ -443,12 +523,12 @@ jupiter-bot/
 
 | Goal | Recommended Strategy | Config Profile | Timeframe |
 |---|---|---|---|
-| **0.025%/day** (primary target) | `GRID_SCALPER` | `optimal` | `5m` |
-| Capture large swings | `GRID_SCALPER` | `aggressive` | `15m` |
-| Ranging market | `BOLLINGER_BANDS` | `conservative` | `15m` |
-| Trending market | `TREND_FOLLOWING` | `default` | `1h` |
-| Deep RSI signals | `MEAN_REVERSION` | `default` | `15m` |
-| Volume-driven moves | `VOLUME_BREAKOUT` | `aggressive` | `5m` |
+| **Best overall performance** (backtested) | `DYNAMIC_TRAILING` | `aggressive` | `15m` |
+| Crash-resistant swing trading | `DYNAMIC_TRAILING` | `conservative` | `15m` or `1h` |
+| High-frequency grid scalping | `GRID_SCALPER` | `conservative` | `1h` |
+| Volume-driven momentum | `VOLUME_BREAKOUT` | `conservative` | `15m` |
+| Ranging/choppy market | `BOLLINGER_BANDS` | `conservative` | `15m` |
+| Deep RSI oversold signals | `MEAN_REVERSION` | `default` | `15m` |
 
 ---
 
@@ -457,11 +537,14 @@ jupiter-bot/
 | Symptom | Cause | Fix |
 |---|---|---|
 | `Cannot find module 'sol_usdc_trading_bot.js'` | Running from the wrong directory | `cd jupiter-bot` then re-run |
+| `Mode: INITIALIZING (warming up indicators...)` | Not enough candle history yet | Normal for first ~15–20 candles; wait for warm-up period |
 | `Mode: INITIALIZING...` (persists beyond first poll) | `entryPrice = 0` — bug from older version | Delete `trading_state.json` and restart with `SOL <amount>` |
 | `PROFIT: BLOCK 🛑` on every poll when holding SOL | Stop-loss being blocked by profit guard — bug from older version | Ensure you are running the latest code; stop-losses now bypass profit check |
 | `PROFIT: BLOCK 🛑` on normal sells | Price hasn't recovered to entry + threshold yet | Expected behaviour — the guard is working. Wait for the target, or lower `PROFIT_THRESHOLD_PERCENT` |
 | Bot never buys after selling | Profit guard buy check: current price must be ≤ previous sell price - threshold | Price needs to dip enough from the last sell for a re-entry to make sense |
+| `DYNAMIC_TRAILING` never fires a buy signal | RSI divergence conditions are strict by design | Normal during sustained downtrends. Lower `RSI_BUY_MAX` (e.g., 50→55) for the `aggressive` profile to increase frequency |
 | `Market data temporarily unavailable` | Binance API rate limit or network blip | Bot retries automatically every `POLL_INTERVAL` |
 | `Trading quotes temporarily unavailable` | Jupiter API timeout | Bot retries automatically; usually resolves within 1–2 polls |
 | No heartbeat received in Discord | Webhook URL missing or incorrect | Check `DISCORD_WEBHOOK_URL` in `.env` starts with `https://discord.com/api/webhooks/` |
 | Heartbeat fires too rarely / too often | `HEARTBEAT_INTERVAL_MS` set to wrong value | Adjust in `.env`; `3600000` = 1 hour, `300000` = 5 min |
+| No heartbeat between 10 PM and 6 AM | Quiet hours feature is active | Expected — heartbeat resumes after 6 AM PST automatically |

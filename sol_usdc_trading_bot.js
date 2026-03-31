@@ -18,6 +18,7 @@ import SimpleTrendStrategy from './strategies/SimpleTrendStrategy.js';
 import { VolumeBreakoutStrategy } from './strategies/VolumeBreakoutStrategy.js';
 import { GridScalperStrategy } from './strategies/GridScalperStrategy.js';
 import { SimplePercentStrategy } from './strategies/SimplePercentStrategy.js';
+import { DynamicTrailingStrategy } from './strategies/DynamicTrailingStrategy.js';
 import { sendDiscordNotification } from './utils/notify.js';
 
 dotenv.config();
@@ -116,7 +117,8 @@ export const STRATEGIES = {
   SIMPLE_TREND: SimpleTrendStrategy,
   VOLUME_BREAKOUT: VolumeBreakoutStrategy,
   GRID_SCALPER: GridScalperStrategy,
-  SIMPLE_PERCENT: SimplePercentStrategy
+  SIMPLE_PERCENT: SimplePercentStrategy,
+  DYNAMIC_TRAILING: DynamicTrailingStrategy
 };
 
 const ACTIVE_STRATEGY_NAME = process.env.ACTIVE_STRATEGY || 'MEAN_REVERSION';
@@ -467,19 +469,17 @@ export class JupiterMonitor {
             logger.warn(`Skipping this trade to prevent slippage loss caused by thin liquidity.`);
             signalTriggered = false; // Block state flip
           } else {
+            const alarmParts = typeof activeStrategy.getAlarmParts === 'function' 
+              ? activeStrategy.getAlarmParts(signalType, metrics, livePrice)
+              : [ `Strategy ${activeStrategy.name} signaled ${signalType} at $${livePrice.toFixed(2)}` ];
+
             if (signalType === 'SELL') {
               logger.info(`\n🚨 SELL RECOMMENDATION ALARM 🚨`);
-              const macdPart = activeStrategy.config?.USE_MACD ? `, MACD crossed down` : ``;
-              const vwapPart = activeStrategy.config?.USE_VWAP ? `, AND Price ($${livePrice.toFixed(2)}) is confirmed below VWAP ($${latestVwap.toFixed(2)})` : ``;
-              const rsiThreshold = activeStrategy.config?.SELL_RSI_THRESHOLD || 'N/A';
-              logger.info(`SOL is OVERBOUGHT (RSI: ${latestRsi.toFixed(2)} > ${rsiThreshold})${macdPart}${vwapPart}!`);
             } else {
               logger.info(`\n🚨 BUY RECOMMENDATION ALARM 🚨`);
-              const macdPart = activeStrategy.config?.USE_MACD ? `, MACD crossed up` : ``;
-              const vwapPart = activeStrategy.config?.USE_VWAP ? `, AND Price ($${livePrice.toFixed(2)}) safely cleared VWAP ($${latestVwap.toFixed(2)})` : ``;
-              const rsiThreshold = activeStrategy.config?.BUY_RSI_THRESHOLD || 'N/A';
-              logger.info(`SOL is OVERSOLD (RSI: ${latestRsi.toFixed(2)} < ${rsiThreshold})${macdPart}${vwapPart}!`);
             }
+            
+            alarmParts.forEach(part => logger.info(part));
           }
         }
 

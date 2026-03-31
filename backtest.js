@@ -7,6 +7,7 @@ import { STRATEGIES, TOKENS, SOL_RESERVE } from './sol_usdc_trading_bot.js';
 import { ProfitGuardedStrategy } from './strategies/ProfitGuardedStrategy.js';
 import { VolumeBreakoutStrategy } from './strategies/VolumeBreakoutStrategy.js';
 import { GridScalperStrategy } from './strategies/GridScalperStrategy.js';
+import { DynamicTrailingStrategy } from './strategies/DynamicTrailingStrategy.js';
 
 dotenv.config();
 
@@ -108,7 +109,8 @@ async function runBacktest() {
     const allStrategies = {
         ...STRATEGIES,
         'VOLUME_BREAKOUT': VolumeBreakoutStrategy,
-        'GRID_SCALPER': GridScalperStrategy
+        'GRID_SCALPER': GridScalperStrategy,
+        'DYNAMIC_TRAILING': DynamicTrailingStrategy
     };
 
     const strategiesToTest = {};
