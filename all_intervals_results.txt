@@ -1,0 +1,90 @@
+
+#####################################################
+### RESULTS FOR INTERVAL: 5m                      ###
+#####################################################
+┌─────────┬────────────────────────────────┬───────────┬────────┬──────────┐
+│ (index) │ name                           │ pnl       │ trades │ finalSol │
+├─────────┼────────────────────────────────┼───────────┼────────┼──────────┤
+│ 0       │ 'MEAN_REVERSION-default'       │ '4.17%'   │ 2      │ '62.50'  │
+│ 1       │ 'MEAN_REVERSION-conservative'  │ '0.00%'   │ 0      │ '60.00'  │
+│ 2       │ 'MEAN_REVERSION-aggressive'    │ '-1.69%'  │ 6      │ '58.99'  │
+│ 3       │ 'ALWAYS_BUY-default'           │ '-2.37%'  │ 6      │ '58.58'  │
+│ 4       │ 'TREND_FOLLOWING-default'      │ '0.00%'   │ 0      │ '60.00'  │
+│ 5       │ 'TREND_FOLLOWING-conservative' │ '0.00%'   │ 0      │ '60.00'  │
+│ 6       │ 'TREND_FOLLOWING-aggressive'   │ '0.00%'   │ 0      │ '60.00'  │
+│ 7       │ 'BOLLINGER_BANDS-default'      │ '1.17%'   │ 4      │ '60.70'  │
+│ 8       │ 'BOLLINGER_BANDS-conservative' │ '-0.38%'  │ 4      │ '59.77'  │
+│ 9       │ 'BOLLINGER_BANDS-aggressive'   │ '0.65%'   │ 4      │ '60.39'  │
+│ 10      │ 'SIMPLE_TREND-default'         │ '0.00%'   │ 0      │ '60.00'  │
+│ 11      │ 'SIMPLE_TREND-conservative'    │ '0.00%'   │ 0      │ '60.00'  │
+│ 12      │ 'SIMPLE_TREND-aggressive'      │ '0.00%'   │ 0      │ '60.00'  │
+│ 13      │ 'VOLUME_BREAKOUT-default'      │ '5.43%'   │ 4      │ '63.26'  │
+│ 14      │ 'VOLUME_BREAKOUT-conservative' │ '5.95%'   │ 4      │ '63.57'  │
+│ 15      │ 'VOLUME_BREAKOUT-aggressive'   │ '-0.59%'  │ 8      │ '59.65'  │
+│ 16      │ 'GRID_SCALPER-default'         │ '-25.51%' │ 175    │ '44.69'  │
+│ 17      │ 'GRID_SCALPER-conservative'    │ '22.75%'  │ 141    │ '73.65'  │
+│ 18      │ 'GRID_SCALPER-aggressive'      │ '-38.20%' │ 193    │ '37.08'  │
+│ 19      │ 'SIMPLE_PERCENT-default'       │ '0.00%'   │ 0      │ '60.00'  │
+└─────────┴────────────────────────────────┴───────────┴────────┴──────────┘
+========================================================
+
+
+#####################################################
+### RESULTS FOR INTERVAL: 15m                     ###
+#####################################################
+┌─────────┬────────────────────────────────┬───────────┬────────┬──────────┐
+│ (index) │ name                           │ pnl       │ trades │ finalSol │
+├─────────┼────────────────────────────────┼───────────┼────────┼──────────┤
+│ 0       │ 'MEAN_REVERSION-default'       │ '1.25%'   │ 2      │ '60.75'  │
+│ 1       │ 'MEAN_REVERSION-conservative'  │ '0.00%'   │ 0      │ '60.00'  │
+│ 2       │ 'MEAN_REVERSION-aggressive'    │ '-0.15%'  │ 4      │ '59.91'  │
+│ 3       │ 'ALWAYS_BUY-default'           │ '-2.07%'  │ 6      │ '58.76'  │
+│ 4       │ 'TREND_FOLLOWING-default'      │ '0.00%'   │ 0      │ '60.00'  │
+│ 5       │ 'TREND_FOLLOWING-conservative' │ '0.00%'   │ 0      │ '60.00'  │
+│ 6       │ 'TREND_FOLLOWING-aggressive'   │ '0.00%'   │ 0      │ '60.00'  │
+│ 7       │ 'BOLLINGER_BANDS-default'      │ '2.02%'   │ 4      │ '61.21'  │
+│ 8       │ 'BOLLINGER_BANDS-conservative' │ '2.14%'   │ 4      │ '61.28'  │
+│ 9       │ 'BOLLINGER_BANDS-aggressive'   │ '2.02%'   │ 4      │ '61.21'  │
+│ 10      │ 'SIMPLE_TREND-default'         │ '0.00%'   │ 0      │ '60.00'  │
+│ 11      │ 'SIMPLE_TREND-conservative'    │ '0.00%'   │ 0      │ '60.00'  │
+│ 12      │ 'SIMPLE_TREND-aggressive'      │ '0.00%'   │ 0      │ '60.00'  │
+│ 13      │ 'VOLUME_BREAKOUT-default'      │ '7.13%'   │ 4      │ '64.28'  │
+│ 14      │ 'VOLUME_BREAKOUT-conservative' │ '7.13%'   │ 4      │ '64.28'  │
+│ 15      │ 'VOLUME_BREAKOUT-aggressive'   │ '-0.84%'  │ 4      │ '59.49'  │
+│ 16      │ 'GRID_SCALPER-default'         │ '-14.64%' │ 143    │ '51.21'  │
+│ 17      │ 'GRID_SCALPER-conservative'    │ '25.89%'  │ 143    │ '75.53'  │
+│ 18      │ 'GRID_SCALPER-aggressive'      │ '-20.96%' │ 131    │ '47.43'  │
+│ 19      │ 'SIMPLE_PERCENT-default'       │ '0.48%'   │ 2      │ '60.29'  │
+└─────────┴────────────────────────────────┴───────────┴────────┴──────────┘
+========================================================
+
+
+#####################################################
+### RESULTS FOR INTERVAL: 1h                      ###
+#####################################################
+┌─────────┬────────────────────────────────┬──────────┬────────┬──────────┐
+│ (index) │ name                           │ pnl      │ trades │ finalSol │
+├─────────┼────────────────────────────────┼──────────┼────────┼──────────┤
+│ 0       │ 'MEAN_REVERSION-default'       │ '0.00%'  │ 0      │ '60.00'  │
+│ 1       │ 'MEAN_REVERSION-conservative'  │ '0.00%'  │ 0      │ '60.00'  │
+│ 2       │ 'MEAN_REVERSION-aggressive'    │ '0.00%'  │ 0      │ '60.00'  │
+│ 3       │ 'ALWAYS_BUY-default'           │ '0.00%'  │ 0      │ '60.00'  │
+│ 4       │ 'TREND_FOLLOWING-default'      │ '0.00%'  │ 0      │ '60.00'  │
+│ 5       │ 'TREND_FOLLOWING-conservative' │ '0.00%'  │ 0      │ '60.00'  │
+│ 6       │ 'TREND_FOLLOWING-aggressive'   │ '0.00%'  │ 0      │ '60.00'  │
+│ 7       │ 'BOLLINGER_BANDS-default'      │ '0.00%'  │ 0      │ '60.00'  │
+│ 8       │ 'BOLLINGER_BANDS-conservative' │ '0.00%'  │ 0      │ '60.00'  │
+│ 9       │ 'BOLLINGER_BANDS-aggressive'   │ '0.00%'  │ 0      │ '60.00'  │
+│ 10      │ 'SIMPLE_TREND-default'         │ '0.00%'  │ 0      │ '60.00'  │
+│ 11      │ 'SIMPLE_TREND-conservative'    │ '0.00%'  │ 0      │ '60.00'  │
+│ 12      │ 'SIMPLE_TREND-aggressive'      │ '0.00%'  │ 0      │ '60.00'  │
+│ 13      │ 'VOLUME_BREAKOUT-default'      │ '0.00%'  │ 0      │ '60.00'  │
+│ 14      │ 'VOLUME_BREAKOUT-conservative' │ '0.00%'  │ 0      │ '60.00'  │
+│ 15      │ 'VOLUME_BREAKOUT-aggressive'   │ '0.00%'  │ 0      │ '60.00'  │
+│ 16      │ 'GRID_SCALPER-default'         │ '3.44%'  │ 79     │ '62.06'  │
+│ 17      │ 'GRID_SCALPER-conservative'    │ '32.83%' │ 83     │ '79.70'  │
+│ 18      │ 'GRID_SCALPER-aggressive'      │ '16.22%' │ 71     │ '69.73'  │
+│ 19      │ 'SIMPLE_PERCENT-default'       │ '0.00%'  │ 0      │ '60.00'  │
+└─────────┴────────────────────────────────┴──────────┴────────┴──────────┘
+========================================================
+

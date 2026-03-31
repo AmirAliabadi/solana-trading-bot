@@ -27,6 +27,9 @@ async function runBacktest() {
         } else if (process.argv[i] === '--config' || process.argv[i] === '--profile') {
             targetProfile = process.argv[i+1]?.toLowerCase();
             i++;
+        } else if (process.argv[i] === '--interval') {
+            targetInterval = process.argv[i+1]?.toLowerCase();
+            i++;
         } else {
             cleanArgs.push(process.argv[i]);
         }
