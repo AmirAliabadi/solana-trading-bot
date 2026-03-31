@@ -17,6 +17,7 @@ import { ProfitGuardedStrategy } from './strategies/ProfitGuardedStrategy.js';
 import SimpleTrendStrategy from './strategies/SimpleTrendStrategy.js';
 import { VolumeBreakoutStrategy } from './strategies/VolumeBreakoutStrategy.js';
 import { GridScalperStrategy } from './strategies/GridScalperStrategy.js';
+import { SimplePercentStrategy } from './strategies/SimplePercentStrategy.js';
 import { sendDiscordNotification } from './utils/notify.js';
 
 dotenv.config();
@@ -114,7 +115,8 @@ export const STRATEGIES = {
   BOLLINGER_BANDS: BollingerBandStrategy,
   SIMPLE_TREND: SimpleTrendStrategy,
   VOLUME_BREAKOUT: VolumeBreakoutStrategy,
-  GRID_SCALPER: GridScalperStrategy
+  GRID_SCALPER: GridScalperStrategy,
+  SIMPLE_PERCENT: SimplePercentStrategy
 };
 
 const ACTIVE_STRATEGY_NAME = process.env.ACTIVE_STRATEGY || 'MEAN_REVERSION';

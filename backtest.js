@@ -16,9 +16,25 @@ async function runBacktest() {
     let initialAmount = 60;
     let targetInterval = '1m';
 
-    const arg1 = process.argv[2];
-    const arg2 = process.argv[3];
-    const arg3 = process.argv[4]; // Optional interval parameter
+    let targetStrategy = null;
+    let targetProfile = null;
+
+    const cleanArgs = [];
+    for (let i = 2; i < process.argv.length; i++) {
+        if (process.argv[i] === '--strategy') {
+            targetStrategy = process.argv[i+1]?.toUpperCase();
+            i++;
+        } else if (process.argv[i] === '--config' || process.argv[i] === '--profile') {
+            targetProfile = process.argv[i+1]?.toLowerCase();
+            i++;
+        } else {
+            cleanArgs.push(process.argv[i]);
+        }
+    }
+
+    const arg1 = cleanArgs[0];
+    const arg2 = cleanArgs[1];
+    const arg3 = cleanArgs[2];
 
     if (arg1) {
         if (!isNaN(parseFloat(arg1))) {
@@ -35,8 +51,10 @@ async function runBacktest() {
     const HIST_DIR = `./historical_data/${targetInterval}`;
 
     console.log(`\n========================================================`);
-    console.log(`   SOL-USDC BACKTESTING ENGINE - ALL STRATEGIES`);
+    console.log(`   SOL-USDC BACKTESTING ENGINE`);
     console.log(`   Interval: ${targetInterval} | Initial Balance: ${initialAmount} ${initialAsset}`);
+    if (targetStrategy) console.log(`   Strategy: ${targetStrategy} ${targetProfile ? `| Config: ${targetProfile}` : ''}`);
+    else console.log(`   Strategy: ALL STRATEGIES`);
     console.log(`   Target Directory: ${HIST_DIR}`);
     console.log(`========================================================\n`);
 
@@ -84,23 +102,38 @@ async function runBacktest() {
     console.log(`\nTotal Records: ${allRows.length}. Starting simulation...\n`);
 
     // 3. Define strategies to test
-    const strategiesToTest = {
+    const allStrategies = {
         ...STRATEGIES,
         'VOLUME_BREAKOUT': VolumeBreakoutStrategy,
         'GRID_SCALPER': GridScalperStrategy
     };
 
+    const strategiesToTest = {};
+    if (targetStrategy) {
+        if (allStrategies[targetStrategy]) {
+            strategiesToTest[targetStrategy] = allStrategies[targetStrategy];
+        } else {
+            console.error(`Error: Strategy ${targetStrategy} not found in STRATEGIES.`);
+            return;
+        }
+    } else {
+        Object.assign(strategiesToTest, allStrategies);
+    }
+
     const results = [];
     const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
     for (const [baseName, StrategyClass] of Object.entries(strategiesToTest)) {
-        const profiles = ['default', 'conservative', 'aggressive'];
+        let profiles = ['default', 'conservative', 'aggressive'];
+        if (targetProfile) {
+            profiles = [targetProfile];
+        }
         
         for (const profile of profiles) {
             const name = `${baseName}-${profile}`;
             
             // Skip ALWAYS_BUY default profile variants since it takes no parameters
-            if (baseName === 'ALWAYS_BUY' && profile !== 'default') continue;
+            if (baseName === 'ALWAYS_BUY' && profile !== 'default' && !targetProfile) continue;
 
             let strategyConfig = {};
             let configFound = false;
@@ -164,6 +197,11 @@ async function runBacktest() {
             }
 
             if (priceHistory.close.length < 50) continue; 
+            
+            // Anchor entry price to realistic starting live price like the real bot
+            if (currentAsset === 'SOL' && entryPrice === 0) {
+                entryPrice = price;
+            }
 
             // Indicators
             const indicators = strategy.calculateIndicators(priceHistory);
