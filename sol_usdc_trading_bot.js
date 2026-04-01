@@ -162,7 +162,9 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export class JupiterMonitor {
   async saveState(state) {
-    await fs.writeFile(STATE_FILE, JSON.stringify(state, null, 2));
+    const tempFile = `${STATE_FILE}.tmp`;
+    await fs.writeFile(tempFile, JSON.stringify(state, null, 2));
+    await fs.rename(tempFile, STATE_FILE);
     logger.info(`Session State safely persisted to ${STATE_FILE}`);
   }
 
@@ -198,6 +200,9 @@ export class JupiterMonitor {
     const apiUrl = `https://public.jupiterapi.com/quote?inputMint=${input.mint}&outputMint=${output.mint}&amount=${amountInAtomic}&slippageBps=${slippageBps}`;
     
     const response = await fetch(apiUrl);
+    if (!response.ok) {
+      throw new Error(`Jupiter API returned HTTP ${response.status}: ${response.statusText}`);
+    }
     const quoteResponse = await response.json();
     
     if (quoteResponse.error) {
@@ -211,6 +216,9 @@ export class JupiterMonitor {
     const interval = process.env.BINANCE_INTERVAL || '1m';
     const apiUrl = `https://api.binance.us/api/v3/klines?symbol=SOLUSDT&interval=${interval}&limit=100`;
     const response = await fetch(apiUrl);
+    if (!response.ok) {
+      throw new Error(`Binance API returned HTTP ${response.status}: ${response.statusText}`);
+    }
     const data = await response.json();
     
     if (!Array.isArray(data)) {
