@@ -26,7 +26,7 @@ export class ProfitGuardedStrategy {
       // CRITICAL: Stop-loss exits MUST always be allowed through.
       // A stop-loss is an emergency exit at a loss by definition — blocking it
       // with a profit requirement defeats the entire purpose of the stop-loss.
-      if (signal.reason === 'STOP_LOSS') {
+      if (signal.reason && signal.reason.includes('STOP_LOSS')) {
         return {
           ...signal,
           metrics: {
