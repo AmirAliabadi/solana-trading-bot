@@ -3,3 +3,4 @@ node_modules/
 logs/
 data_logs/
 trading_state.json
+all_intervals_results.txt
