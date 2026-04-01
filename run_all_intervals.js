@@ -1,7 +1,7 @@
 import { spawnSync } from 'child_process';
 import fs from 'fs';
 
-const intervals = ['5m', '15m', '1h'];
+const intervals = ['1m', '5m', '15m', '1h'];
 let finalOutput = '';
 
 for (const interval of intervals) {
@@ -9,9 +9,9 @@ for (const interval of intervals) {
     finalOutput += `\n#####################################################\n`;
     finalOutput += `### RESULTS FOR INTERVAL: ${interval.padEnd(4, ' ')}                    ###\n`;
     finalOutput += `#####################################################\n`;
-    
+
     const result = spawnSync('node', ['backtest.js', '--interval', interval], { encoding: 'utf8' });
-    
+
     if (result.stdout) {
         // Extract the table from the end
         const tableStart = result.stdout.lastIndexOf('┌──');
