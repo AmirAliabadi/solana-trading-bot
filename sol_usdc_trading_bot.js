@@ -19,6 +19,7 @@ import { VolumeBreakoutStrategy } from './strategies/VolumeBreakoutStrategy.js';
 import { GridScalperStrategy } from './strategies/GridScalperStrategy.js';
 import { SimplePercentStrategy } from './strategies/SimplePercentStrategy.js';
 import { DynamicTrailingStrategy } from './strategies/DynamicTrailingStrategy.js';
+import { FibonacciStrategy } from './strategies/FibonacciStrategy.js';
 import { sendDiscordNotification } from './utils/notify.js';
 
 dotenv.config();
@@ -118,7 +119,8 @@ export const STRATEGIES = {
   VOLUME_BREAKOUT: VolumeBreakoutStrategy,
   GRID_SCALPER: GridScalperStrategy,
   SIMPLE_PERCENT: SimplePercentStrategy,
-  DYNAMIC_TRAILING: DynamicTrailingStrategy
+  DYNAMIC_TRAILING: DynamicTrailingStrategy,
+  FIBONACCI: FibonacciStrategy
 };
 
 const ACTIVE_STRATEGY_NAME = process.env.ACTIVE_STRATEGY || 'MEAN_REVERSION';
