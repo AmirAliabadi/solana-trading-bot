@@ -264,7 +264,7 @@ export class JupiterMonitor {
     }
 
     // Startup Notification
-    const startupMsg = `**Bot Initialized**\n**Strategy**: ${activeStrategy.name}\n**Profile**: ${strategyProfile}\n**Portfolio**: ${state.currentAmount.toFixed(4)} ${state.currentAsset}`;
+    const startupMsg = `**Bot Initialized (v${BOT_VERSION})**\n**Strategy**: ${activeStrategy.name} (v${activeStrategy.version})\n**Profile**: ${strategyProfile}\n**Portfolio**: ${state.currentAmount.toFixed(4)} ${state.currentAsset}`;
     sendDiscordNotification(DISCORD_WEBHOOK_URL, startupMsg, 0x3498DB); // Blue for startup
 
     let { initialAsset, initialAmount } = state;
