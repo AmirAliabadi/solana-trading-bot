@@ -4,13 +4,16 @@ import fs from 'fs';
 const intervals = ['1m', '5m', '15m', '1h'];
 let finalOutput = '';
 
+const userArgs = process.argv.slice(2);
+
 for (const interval of intervals) {
     console.log(`Running interval ${interval}...`);
     finalOutput += `\n#####################################################\n`;
     finalOutput += `### RESULTS FOR INTERVAL: ${interval.padEnd(4, ' ')}                    ###\n`;
     finalOutput += `#####################################################\n`;
 
-    const result = spawnSync('node', ['backtest.js', '--interval', interval], { encoding: 'utf8' });
+    const args = ['backtest.js', '--interval', interval, ...userArgs];
+    const result = spawnSync('node', args, { encoding: 'utf8' });
 
     if (result.stdout) {
         // Extract the table from the end

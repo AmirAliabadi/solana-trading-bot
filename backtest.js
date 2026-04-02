@@ -20,6 +20,7 @@ async function runBacktest() {
 
     let targetStrategy = null;
     let targetProfile = null;
+    let targetStartDate = null;
 
     const cleanArgs = [];
     for (let i = 2; i < process.argv.length; i++) {
@@ -31,6 +32,9 @@ async function runBacktest() {
             i++;
         } else if (process.argv[i] === '--interval') {
             targetInterval = process.argv[i+1]?.toLowerCase();
+            i++;
+        } else if (process.argv[i] === '--start-date') {
+            targetStartDate = process.argv[i+1];
             i++;
         } else {
             cleanArgs.push(process.argv[i]);
@@ -61,6 +65,7 @@ async function runBacktest() {
     if (targetStrategy) console.log(`   Strategy: ${targetStrategy} ${targetProfile ? `| Config: ${targetProfile}` : ''}`);
     else console.log(`   Strategy: ALL STRATEGIES`);
     console.log(`   Target Directory: ${HIST_DIR}`);
+    if (targetStartDate) console.log(`   Start Date: ${targetStartDate}`);
     console.log(`========================================================\n`);
 
     // 1. Scan for CSV files in historical_data/
@@ -103,6 +108,19 @@ async function runBacktest() {
         const timeB = new Date(b.split(',')[0]).getTime();
         return timeA - timeB;
     });
+
+    if (targetStartDate) {
+        const startTime = new Date(targetStartDate).getTime();
+        if (!isNaN(startTime)) {
+            allRows = allRows.filter(row => {
+                const rowTime = new Date(row.split(',')[0]).getTime();
+                return rowTime >= startTime;
+            });
+            console.log(`\nFiltered data starting from ${new Date(startTime).toISOString()}`);
+        } else {
+            console.warn(`\nWarning: Invalid --start-date format '${targetStartDate}'. Ignoring.`);
+        }
+    }
 
     console.log(`\nTotal Records: ${allRows.length}. Starting simulation...\n`);
 
