@@ -1,0 +1,10 @@
+{
+    "MACD_FAST": 12,
+    "MACD_SLOW": 26,
+    "MACD_SIGNAL": 9,
+    "EMA_PERIOD": 100,
+    "RSI_PERIOD": 14,
+    "RSI_BUY_MAX": 50,
+    "RSI_SELL_MIN": 75,
+    "TRAIL_PCT": 5.0
+}

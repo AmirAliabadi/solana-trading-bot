@@ -9,6 +9,7 @@ import { VolumeBreakoutStrategy } from './strategies/VolumeBreakoutStrategy.js';
 import { GridScalperStrategy } from './strategies/GridScalperStrategy.js';
 import { DynamicTrailingStrategy } from './strategies/DynamicTrailingStrategy.js';
 import { FibonacciStrategy } from './strategies/FibonacciStrategy.js';
+import { TrendAccumulatorStrategy } from './strategies/TrendAccumulatorStrategy.js';
 
 dotenv.config();
 
@@ -147,7 +148,8 @@ async function runBacktest() {
         'VOLUME_BREAKOUT': VolumeBreakoutStrategy,
         'GRID_SCALPER': GridScalperStrategy,
         'DYNAMIC_TRAILING': DynamicTrailingStrategy,
-        'FIBONACCI': FibonacciStrategy
+        'FIBONACCI': FibonacciStrategy,
+        'TREND_ACCUMULATOR': TrendAccumulatorStrategy
     };
 
     const strategiesToTest = {};

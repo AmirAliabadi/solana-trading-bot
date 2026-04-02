@@ -27,7 +27,8 @@ export class ProfitGuardedStrategy {
       // CRITICAL: Stop-loss exits MUST always be allowed through.
       // A stop-loss is an emergency exit at a loss by definition — blocking it
       // with a profit requirement defeats the entire purpose of the stop-loss.
-      if (signal.reason && signal.reason.includes('STOP_LOSS')) {
+      if (signal.reason && (signal.reason.includes('STOP_LOSS') || signal.reason.includes('STOP'))) {
+        this.lastExitWasStopLoss = true;
         return {
           ...signal,
           metrics: {
@@ -42,11 +43,16 @@ export class ProfitGuardedStrategy {
 
       if (isBuy) {
         // We are holding USDC, trying to buy SOL.
-        if (this.requireBuyProfit) {
+        // If the price rallies 5% above our last sell price, it's a structural breakout.
+        // We shouldn't stubbornly wait for a dip back to our exit price in a roaring bull market.
+        const isRunawayBullMarket = livePrice >= entryPrice * 1.05;
+
+        if (this.requireBuyProfit && !this.lastExitWasStopLoss && !isRunawayBullMarket) {
           // We want the price to be LOWER than our previous sell price.
           profitMet = livePrice <= entryPrice * (1 - this.threshold);
         } else {
           // Strategy controls entry, standard buy allowed without price ceiling
+          // Also bypasses requirement if the last exit was a STOP LOSS or a Runaway Bull Market
           profitMet = true;
         }
       } else {
@@ -66,6 +72,14 @@ export class ProfitGuardedStrategy {
           }
         };
       }
+    }
+
+    // Since we successfully triggered a signal that was not a stop loss blocked by the profit guard
+    if (signal.type === 'BUY') {
+      this.lastExitWasStopLoss = false;
+    } else if (signal.type === 'SELL') { 
+      // If a SELL passes through profit guard normally, it was not a stop-loss
+      this.lastExitWasStopLoss = false; 
     }
 
     // Profit guard is satisfied or we have no history
