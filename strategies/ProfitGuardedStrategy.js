@@ -1,9 +1,10 @@
 export class ProfitGuardedStrategy {
-  constructor(baseStrategy, threshold = 0.025) {
+  constructor(baseStrategy, threshold = 0.025, requireBuyProfit = false) {
     this.baseStrategy = baseStrategy;
     this.name = `${baseStrategy.name} + Profit Guard (${threshold}%)`;
     this.version = "1.0.0";
     this.threshold = threshold / 100; // Convert percentage to decimal
+    this.requireBuyProfit = requireBuyProfit;
   }
 
   getRequiredIndicators() {
@@ -41,8 +42,13 @@ export class ProfitGuardedStrategy {
 
       if (isBuy) {
         // We are holding USDC, trying to buy SOL.
-        // We want the price to be LOWER than our previous sell price.
-        profitMet = livePrice <= entryPrice * (1 - this.threshold);
+        if (this.requireBuyProfit) {
+          // We want the price to be LOWER than our previous sell price.
+          profitMet = livePrice <= entryPrice * (1 - this.threshold);
+        } else {
+          // Strategy controls entry, standard buy allowed without price ceiling
+          profitMet = true;
+        }
       } else {
         // We are holding SOL, trying to sell for USDC.
         // We want the price to be HIGHER than our previous buy price.

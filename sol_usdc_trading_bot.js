@@ -107,6 +107,7 @@ const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const MAX_PRICE_IMPACT = parseFloat(process.env.MAX_PRICE_IMPACT) || 0.1;
 const ENABLE_DATA_LOGGING = process.env.ENABLE_DATA_LOGGING === 'true';
 const PROFIT_THRESHOLD = parseFloat(process.env.PROFIT_THRESHOLD_PERCENT) || 0;
+const REQUIRE_BUY_PROFIT = process.env.REQUIRE_BUY_PROFIT === 'true';
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 const HEARTBEAT_INTERVAL_MS = parseInt(process.env.HEARTBEAT_INTERVAL_MS) || 3600000; // Default: 1 hour
 
@@ -145,7 +146,7 @@ const baseStrategy = new StrategyClass(strategyConfig);
 
 // Wrap with Profit Guard if threshold is set
 const activeStrategy = PROFIT_THRESHOLD > 0 
-    ? new ProfitGuardedStrategy(baseStrategy, PROFIT_THRESHOLD)
+    ? new ProfitGuardedStrategy(baseStrategy, PROFIT_THRESHOLD, REQUIRE_BUY_PROFIT)
     : baseStrategy;
 
 const BOT_VERSION = "1.1.0";

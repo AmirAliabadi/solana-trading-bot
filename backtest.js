@@ -124,6 +124,23 @@ async function runBacktest() {
 
     console.log(`\nTotal Records: ${allRows.length}. Starting simulation...\n`);
 
+    const chartData = {
+        interval: targetInterval,
+        times: [],
+        prices: [],
+        trades: {}
+    };
+
+    // Pre-fill base times and prices for the chart
+    for (const line of allRows) {
+        if (!line) continue;
+        const columns = line.split(',');
+        if (columns.length >= 5) {
+            chartData.times.push(columns[0]);
+            chartData.prices.push(parseFloat(columns[4]));
+        }
+    }
+
     // 3. Define strategies to test
     const allStrategies = {
         ...STRATEGIES,
@@ -176,10 +193,13 @@ async function runBacktest() {
             if (baseName !== 'ALWAYS_BUY' && !configFound && profile !== 'default') continue;
             
             const strategy = new StrategyClass(strategyConfig);
+            
+            chartData.trades[name] = [];
 
         // Wrap with Profit Guard (mimic bot behavior)
         const profitGuardThreshold = parseFloat(process.env.PROFIT_THRESHOLD_PERCENT) || 0.2; 
-        const profitGuardedStrategy = new ProfitGuardedStrategy(strategy, profitGuardThreshold);
+        const requireBuyProfit = process.env.REQUIRE_BUY_PROFIT === 'true';
+        const profitGuardedStrategy = new ProfitGuardedStrategy(strategy, profitGuardThreshold, requireBuyProfit);
 
         let currentAsset = initialAsset;
         let currentAmount = initialAmount;
@@ -243,6 +263,7 @@ async function runBacktest() {
                     const solReceived = (currentAmount / price) * (1 - slippage);
                     currentAmount = solReceived;
                     currentAsset = 'SOL';
+                    chartData.trades[name].push({ time: timestamp, price: price, type: 'BUY' });
                 } else if (type === 'SELL' && currentAsset === 'SOL') {
                     sellTrades++;
                     entryPrice = price; 
@@ -250,6 +271,7 @@ async function runBacktest() {
                     const usdcReceived = (tradableSol * price) * (1 - slippage);
                     currentAmount = usdcReceived;
                     currentAsset = 'USDC';
+                    chartData.trades[name].push({ time: timestamp, price: price, type: 'SELL' });
                 }
                 tradeCount++;
             }
@@ -275,6 +297,91 @@ async function runBacktest() {
     console.log(`\n========================================================`);
     console.table(results);
     console.log(`========================================================\n`);
+
+    // Generate Chart HTML
+    console.log(`Generating interactive chart HTML...`);
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Backtest Chart - ${chartData.interval}</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; background-color: #111; color: #fff; font-family: sans-serif; }
+        #chart { width: 100vw; height: 100vh; }
+    </style>
+</head>
+<body>
+    <div id="chart"></div>
+    <script>
+        const chartData = ${JSON.stringify(chartData)};
+        
+        const traces = [];
+        
+        traces.push({
+            x: chartData.times,
+            y: chartData.prices,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'SOL Price',
+            line: {color: '#17BECF', width: 2}
+        });
+        
+        let isFirst = true;
+        for (const [strategyName, trades] of Object.entries(chartData.trades)) {
+            if (trades.length === 0) continue;
+            
+            const buyTimes = trades.filter(t => t.type === 'BUY').map(t => t.time);
+            const buyPrices = trades.filter(t => t.type === 'BUY').map(t => t.price);
+            
+            const sellTimes = trades.filter(t => t.type === 'SELL').map(t => t.time);
+            const sellPrices = trades.filter(t => t.type === 'SELL').map(t => t.price);
+            
+            if (buyTimes.length > 0) {
+                traces.push({
+                    x: buyTimes,
+                    y: buyPrices,
+                    type: 'scatter',
+                    mode: 'markers',
+                    name: strategyName + ' BUY',
+                    marker: {color: '#00FA9A', size: 12, symbol: 'triangle-up', line: {color: '#000', width: 1}},
+                    visible: isFirst ? true : 'legendonly'
+                });
+            }
+            
+            if (sellTimes.length > 0) {
+                traces.push({
+                    x: sellTimes,
+                    y: sellPrices,
+                    type: 'scatter',
+                    mode: 'markers',
+                    name: strategyName + ' SELL',
+                    marker: {color: '#FF6347', size: 12, symbol: 'triangle-down', line: {color: '#000', width: 1}},
+                    visible: isFirst ? true : 'legendonly'
+                });
+            }
+            
+            isFirst = false;
+        }
+        
+        const layout = {
+            title: 'SOL-USDC Backtest (' + chartData.interval + ')',
+            plot_bgcolor: '#111',
+            paper_bgcolor: '#111',
+            font: { color: '#fff' },
+            xaxis: { title: 'Time', gridcolor: '#444' },
+            yaxis: { title: 'Price (USDC)', gridcolor: '#444' },
+            legend: { x: 1.05, y: 1 }
+        };
+        
+        Plotly.newPlot('chart', traces, layout);
+    </script>
+</body>
+</html>
+`;
+    const chartPath = path.join(process.cwd(), `backtest_chart_${targetInterval}.html`);
+    fsSync.writeFileSync(chartPath, htmlContent);
+    console.log(`Chart successfully saved to: ${chartPath}\n`);
 }
 
 runBacktest();
