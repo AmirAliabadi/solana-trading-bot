@@ -448,7 +448,7 @@ export class JupiterMonitor {
             const heartbeatMsg = [
               `**Bot Version:** v${BOT_VERSION}`,
               `**Strategy:** ${activeStrategy.name} (v${activeStrategy.version})`,
-              `**Balances:** ${solBalance.toFixed(4)} SOL | ${usdcBalance.toFixed(2)} USDC`,
+              `**Current Balance:** ${solBalance.toFixed(4)} SOL | ${usdcBalance.toFixed(2)} USDC`,
               `**Price:** $${livePrice.toFixed(2)}`,
               ``,
               `**Session PNL:** ${pnlPercStr} (${pnlStr} ${initialAsset})`,
@@ -503,8 +503,23 @@ export class JupiterMonitor {
           // Discord Notification
           const discordColor = signalType === 'BUY' ? 0x00FF00 : 0xFF0000;
           const discordTitle = signalType === 'BUY' ? "🟢 BUY RECOMMENDATION" : "🔴 SELL RECOMMENDATION";
-          const discordMsg = `**Action**: ${signalType} SOL\n**Price**: $${livePrice.toFixed(2)}\n**Balances**: ${solBalance.toFixed(4)} SOL | ${usdcBalance.toFixed(2)} USDC\n**PNL**: ${pnlPercStr} (${currentPnl.toFixed(4)} ${initialAsset})\n**Bot Version**: v${BOT_VERSION}\n**Strategy**: ${activeStrategy.name} (v${activeStrategy.version})\n\n*Execute your swap to ${targetToken} now!*`;
-          sendDiscordNotification(DISCORD_WEBHOOK_URL, discordMsg, discordColor);
+          
+          const postSolBalance = signalType === 'SELL' ? SOL_RESERVE : (receiveAmount + solBalance);
+          const postUsdcBalance = signalType === 'SELL' ? (usdcBalance + receiveAmount) : 0;
+
+          const discordMsg = [
+            `**Action**: ${signalType} SOL`,
+            `**Price**: $${livePrice.toFixed(2)}`,
+            `**Current Balance**: ${solBalance.toFixed(4)} SOL | ${usdcBalance.toFixed(2)} USDC`,
+            `**New Balance**: ${postSolBalance.toFixed(4)} SOL | ${postUsdcBalance.toFixed(2)} USDC`,
+            `**PNL**: ${pnlPercStr} (${currentPnl.toFixed(4)} ${initialAsset})`,
+            `**Bot Version**: v${BOT_VERSION}`,
+            `**Strategy**: ${activeStrategy.name} (v${activeStrategy.version})`,
+            ``,
+            `*Execute your swap to ${targetToken} now!*`
+          ].join('\n');
+
+          sendDiscordNotification(DISCORD_WEBHOOK_URL, discordMsg, discordColor, discordTitle);
           
           logger.info(`\n================ STATE FLIP ================`);
           
